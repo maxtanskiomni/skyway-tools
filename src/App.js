@@ -1,25 +1,284 @@
-import logo from './logo.svg';
+import React from 'react';
+
 import './App.css';
 
-function App() {
+import { Switch, Route, Router, Redirect } from 'react-router-dom';
+import CssBaseline from '@mui/material/CssBaseline';
+import Container from '@mui/material/Container';
+import makeStyles from '@mui/styles/makeStyles';
+
+import LoginPage from './pages/LoginPage';
+import CreateUserPage from './pages/CreateUserPage';
+import CarPage from './pages/CarPage';
+import CheckForm from './pages/CheckFormPage.js';
+import ServiceOrderPage from './pages/ServiceOrderPage';
+import ServicePage from './pages/ServicePage';
+import ServiceBoard from './pages/ServiceKanbanPage';
+import PartPage from './pages/PartPage';
+import LeadPage from './pages/LeadPage';
+import ScanPage from './pages/ScanPage';
+import CustomerPage from './pages/CustomerPage';
+import InputPage from './pages/InputPage';
+import AccountingPage from './pages/AccountingPage';
+import DealDashboardPage from './pages/DealDashboardPage';
+import DMVDashboardPage from './pages/DMVDashboardPage';
+import SalesDashboardPage from './pages/SalesDashboardPage';
+import PayrollPage from './pages/PayrollPage';
+import PaymentPage from './pages/PaymentPage';
+import WorldPacPage from './pages/WorldPacPage';
+// import CreditAppPage from './pages/CreditAppPage';
+import PaymentConfirmationPage from './pages/PaymentConfirmationPage';
+import TaskDashboardPage from './pages/TaskDashboardPage';
+import PipelinePage from './pages/PipelinePage';
+import ServicePipelinePage from './pages/ServicePipelinePage';
+import PartsPipelinePage from './pages/PartsPipelinePage';
+import TimesheetPage from './pages/TimesheetPage';
+import BackOfficePage from './pages/BackOfficePage';
+import InventoryPage from './pages/InventoryPage';
+import ServicePlanPage from './pages/ServicePlanPage';
+import ServicePrioritiesPage from './pages/ServicePrioritiesPage';
+
+import Header from './components/Header';
+
+import useWindowSize from './utilities/useWindowSize.js';
+import history from './utilities/history';
+
+import Camera, { FACING_MODES } from 'react-html5-camera-photo';
+import 'react-html5-camera-photo/build/css/index.css';
+
+import MuiAlert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
+import Backdrop from '@mui/material/Backdrop';
+import CircularProgress from '@mui/material/CircularProgress';
+import { StateManager } from './utilities/stateManager';
+import firebase from './utilities/firebase';
+
+import { IconButton } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import ListPage from './pages/ListPage';
+import VendorPage from './pages/VendorPage';
+import ShppingForm from './pages/ShippingPage.js';
+import MechanicPage from './pages/MechanicPage';
+import ThankYouPage from './pages/ThankYouPage';
+import LeadsPage from './pages/LeadsPage';
+import CreditAppsPage from './pages/CreditAppsPage';
+import InspectionPage from './pages/InspectionPage';
+import AssignInventoryPage from './pages/AssignInventoryPage.js';
+import EstimatePage from './pages/EstimatePage.js';
+import ServiceStatusPage from './pages/ServiceStatusPage.js';
+
+
+function getWindowDimensions() {
+  const { innerWidth: width, innerHeight: height } = window;
+  return {
+    width,
+    height
+  };
+}
+
+const App = () => {
+
+  const classes = useStyles();
+
+  const size = useWindowSize();
+  const [message, setMessage] = React.useState("Data posted successfully!");
+  StateManager.setAlertMessage = setMessage;
+  const [open, setOpen] = React.useState(false);
+  StateManager.openAlert = setOpen;
+  const [severity, setSeverity] = React.useState('success');
+  StateManager.setAlertSeverity = setSeverity;
+  StateManager.setAlertAndOpen = (message, severity) => {
+    if(severity) setSeverity(severity);
+    setMessage(message);
+    setOpen(true);
+    // setTimeout(handleClose, 3000);
+  }
+  const [loading, setLoading] = React.useState(false);
+  StateManager.loading = loading;
+  StateManager.setLoading = setLoading;
+
+  const [pageLoading, setPageLoading] = React.useState(false);
+  StateManager.pageLoading = pageLoading;
+  StateManager.setPageLoading = setPageLoading;
+
+  const [maxWidth, setMaxWidth] = React.useState("lg");
+  StateManager.setMaxWidth = setMaxWidth;
+
+  const [title, setTitle] = React.useState(document.title);
+  StateManager.title = title;
+  StateManager.setTitle = setTitle;
+
+  const [windowDimensions, setWindowDimensions] = React.useState(getWindowDimensions());
+  StateManager.windowDimensions = windowDimensions;
+
+  const [showCamera, setCamera] = React.useState(false);
+  StateManager.toggleCamera = () => setCamera(!showCamera);
+  // StateManager.photoHandler = () => null;
+
+  React.useEffect(() => {
+    function handleResize() {
+      setWindowDimensions(getWindowDimensions());
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  React.useEffect(() => {
+    console.log(title)
+    document.title = title;
+  }, [title])
+
+  const handleClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setOpen(false);
+  };
+
+  const handleTakePhoto = (dataUri) => {
+    console.log("start", StateManager.photoHandler)
+    StateManager.photoHandler(dataUri);
+    // StateManager.toggleCamera();
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="App" style={{width: size.width, height: size.height}}>
+      <CssBaseline />
+      <Backdrop style={{zIndex: 999999, color: '#fff'}} open={loading}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+      <Backdrop style={{zIndex: 999999, color: '#fff'}} open={showCamera}>
+        <div style={{backgroundColor: "#fff", zIndex: 99999999, position:"absolute", right: 10, top: 10}}>
+          <IconButton onClick={StateManager.toggleCamera} size="large">
+            <CloseIcon color='secondary' />
+          </IconButton>
+        </div>
+        {
+          showCamera && <Camera
+            isFullscreen
+            isSilentMode
+            isMaxResolution
+            idealFacingMode = {FACING_MODES.ENVIRONMENT}
+            onTakePhoto = { (dataUri) => { handleTakePhoto(dataUri); } }
+          />
+        }
+      </Backdrop>
+      <Header title={title} />
+
+      <div className='section-to-print'>
+        <div className={classes.root}>
+          <main className={classes.content}>
+            <Container className={classes.container} maxWidth={maxWidth}>
+              <Router className="section-to-print" history={history} >
+                <Switch>
+                  {/* Protected Pages */}
+                  <ProtectedRoute path="/form/:formName" render={props => <InputPage {...props} />} />
+                  <ProtectedRoute path="/car/:stockNumber" render={props => <CarPage {...props} />} />
+                  <ProtectedRoute path="/service-order/:stockNumber" render={props => <ServiceOrderPage {...props} />} />
+                  <ProtectedRoute path="/service/:stockNumber" render={props => <ServicePage {...props} />} />
+                  <ProtectedRoute path="/service-board" render={props => <ServiceBoard {...props} />} />
+                  <ProtectedRoute path="/part/:stockNumber" render={props => <PartPage {...props} />} />
+                  <ProtectedRoute path="/customer/:id" render={props => <CustomerPage {...props} />} />
+                  <ProtectedRoute path="/accounting" render={props => <AccountingPage {...props} />} />
+                  <ProtectedRoute path="/deal-dashboard/:month" render={props => <DealDashboardPage {...props} />} />
+                  <ProtectedRoute path="/dmv-dashboard/" render={props => <DMVDashboardPage {...props} />} />
+                  <ProtectedRoute path="/sales-dashboard/" render={props => <SalesDashboardPage {...props} />} />
+                  <ProtectedRoute path="/mechanic-summary/:endDate/:startDate" render={props => <MechanicPage {...props} />} />
+                  <ProtectedRoute path="/pipeline/" render={props => <PipelinePage {...props} />} />
+                  <ProtectedRoute path="/service-pipeline/" render={props => <ServicePipelinePage {...props} />} />
+                  <ProtectedRoute path="/parts-pipeline/" render={props => <PartsPipelinePage {...props} />} />
+                  <ProtectedRoute path="/task-dashboard/:employee" render={props => <TaskDashboardPage {...props} />} />
+                  <ProtectedRoute path="/task-dashboard/" render={props => <TaskDashboardPage {...props} />} />
+                  <ProtectedRoute path="/backoffice/" render={props => <BackOfficePage {...props} />} />
+                  <ProtectedRoute path="/timesheets/:date/" render={props => <TimesheetPage {...props} />} />
+                  <ProtectedRoute path="/purchase_orders" render={props => <ListPage type="purchase-orders" {...props} />} />
+                  <ProtectedRoute path="/leads" render={props => <LeadsPage {...props} />} />
+                  <ProtectedRoute path="/lead/:lead_id/" render={props => <LeadPage {...props} />} />
+                  <ProtectedRoute path="/deposits" render={props => <ListPage type="deposits" {...props} />} />
+                  <ProtectedRoute path="/payroll/:date" render={props => <PayrollPage {...props} />} />
+                  <ProtectedRoute path="/credit-apps" render={props => <CreditAppsPage {...props} />} />
+                  <ProtectedRoute path="/worldpac" render={props => <WorldPacPage {...props} />} />
+                  <ProtectedRoute path="/inspection" render={props => <InspectionPage {...props} />} />
+                  <ProtectedRoute path="/inventory" render={props => <InventoryPage {...props} />} />
+                  <ProtectedRoute path="/assign-part/:entryID" render={props => <AssignInventoryPage {...props} />} />
+                  <ProtectedRoute path="/check-form/" render={props => <CheckForm {...props} />} />
+                  {/* <ProtectedRoute path="/credit-app/:id" render={props => <CreditAppsPage {...props} />} /> */}
+                  {/* unprotected pages */} 
+                  <Route path="/service-priorities" render={props => <ServicePrioritiesPage {...props} />} />
+                  <Route path="/service-plan" render={props => <ServicePlanPage {...props} />} />
+                  <Route path="/estimate" render={props => <EstimatePage {...props} />} />
+                  <Route path="/service-status" render={props => <ServiceStatusPage {...props} />} />
+                  <Route path="/worldpac" render={props => <WorldPacPage {...props} />} />
+                  <Route path="/payment" render={props => <PaymentPage {...props} />} />
+                  <Route path="/payment-status" render={props => <PaymentConfirmationPage {...props} />} />
+                  <Route path="/thankyou" render={props => <ThankYouPage {...props} />} />
+                  <Route path="/new-user" render={props => <CreateUserPage {...props} />} />
+                  <Route path="/scan" render={props => <ScanPage {...props} />} />
+                  <Route path="/vendor-items/:vendor" render={props => <VendorPage {...props} />} />
+                  <Route path="/shipping-submit/" render={props => <ShppingForm {...props} />} />
+                  <Route path="/input/" render={props => <InputPage {...props} page={"edit-vendor-item"} />} />
+                  {/* redirect user to page below if route does not exist */} 
+                  <Route path="/" render={props => StateManager.authed ? getHomePage(props) : <LoginPage {...props} />} />
+                </Switch>
+              </Router>
+            </Container>
+          </main>
+        </div>
+      </div>
+
+      <Snackbar open={open} autoHideDuration={3000} onClose={handleClose} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert elevation={6} variant="filled" onClose={handleClose} severity={severity} >
+          {message}
+        </MuiAlert>
+      </Snackbar>
     </div>
   );
+}
+
+const useStyles = makeStyles((theme) => ({
+  root: {
+    display: 'flex',
+  },
+  content: {
+    flexGrow: 1,
+    height: '100%',
+    overflow: 'auto',
+  },
+  container: {
+    paddingTop: theme.spacing(4),
+    paddingBottom: theme.spacing(4),
+  },
+}));
+
+const ProtectedRoute = (props) => {
+  const isAuthed = localStorage.getItem('authed') || sessionStorage.getItem('authed');
+  const page = props.path.replace("/", "").split("/")[0];
+  const isAllowed = StateManager.isUserAllowed(page) || StateManager.isAdmin();
+  return(
+    isAuthed && isAllowed  
+      ? <Route {...props} />
+      : <Redirect to={{pathname: "/"}} />
+  )
+}
+
+const getHomePage = (props) => {
+  let page = <ListPage type="inventory" {...props} />
+  switch (StateManager.userType) {
+    case "mechanic":
+      page = <MechanicPage {...props} />
+      break;
+
+    case "sales":
+      page = <ListPage type="inventory" {...props} />
+      break;
+
+    case "service":
+      page = <ServicePipelinePage {...props} />
+      break;
+  }
+
+  return page;
 }
 
 export default App;

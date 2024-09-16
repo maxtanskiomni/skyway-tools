@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  height: 100%;
 }
 
 .App-logo {
@@ -34,5 +35,59 @@
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+.react-kanban-board {
+  width: 100%;
+  height: 100%;
+}
+
+.ui-reorderable-list {
+  width: 50%;
+  height: 300px;
+  display: flex; 
+  flex-wrap: wrap;
+}
+
+
+@media print {
+  @page {
+    size: portrait;
+    margin: 1cm; /* Maintain a margin for print */
+  }
+
+  body * {
+    visibility: hidden; /* Hide everything initially */
+  }
+
+  .section-to-print, .section-to-print * {
+    visibility: visible; /* Only make the printable section visible */
+  }
+
+  .section-to-print {
+    width: 60%; /* Keep width at 80% for better fit */
+    padding: 0; /* Remove padding to avoid overflow */
+    box-sizing: border-box; /* Ensure padding doesn't affect width */
+  }
+
+  /* Typography adjustments for readability */
+  .MuiTypography-root {
+    font-size: 20px; /* Adjust font size */
+  }
+
+  /* Ensure list items or content don't break inside */
+  .MuiListItem-root, .MuiGrid-root {
+    page-break-inside: avoid; /* Prevent page break inside */
+    break-inside: avoid;
+    margin-bottom: 0; /* Remove extra margin at the bottom */
+    margin: 0 !important; /* Force margin to 0 to prevent extra space */
+    padding: 0 !important; /* Remove padding to avoid overflow or extra space */
+  }
+
+  /* Optional: adjust the layout further to reduce unnecessary spaces */
+  .MuiListItemText-root {
+    margin: 0 !important; /* Remove margin around text */
+    padding: 0 !important; /* Remove extra padding */
   }
 }

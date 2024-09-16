@@ -3,10 +3,37 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { ThemeProvider, StyledEngineProvider, createTheme, adaptV4Theme } from '@mui/material/styles';
+
+require("./utilities/protos");
+
+const theme = createTheme(adaptV4Theme({
+  palette: {
+    primary: {
+      light: '#fff',
+      main: '#023e84',
+      dark: '#777'
+    },
+    secondary: {
+      main: '#ca9f6b',
+    },
+    warning: {
+      main: '#FFFF00',
+    },
+    error: {
+      main: '#f44336',
+    },
+  },
+  typography: { 
+      useNextVariants: true
+  }
+}));
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <StyledEngineProvider injectFirst>
+      <ThemeProvider theme={theme} ><App/></ThemeProvider>
+    </StyledEngineProvider>
   </React.StrictMode>,
   document.getElementById('root')
 );
