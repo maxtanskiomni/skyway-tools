@@ -1,6 +1,7 @@
 import React from 'react';
 import Grid from '@mui/material/Grid';
 import SimpleTable from '../../components/SimpleTable';
+import moment from 'moment/moment';
 
 
 export default function Funding(props) {
@@ -10,7 +11,7 @@ export default function Funding(props) {
     total: x.invoice.total,
     difference: Math.round(100*(x.invoice.total - x.deposits))/100
   }))
-  .filter(x => x.difference !== 0);
+  .filter(x => x.difference !== 0).sort((a, b) => moment(a.date).diff(moment(b.date)));;
 
   const summary = [
     {format: 'usd', label: 'Owed', value: rows.reduce((a,c) => a + c.total, 0)},

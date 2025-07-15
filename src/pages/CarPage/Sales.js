@@ -170,8 +170,10 @@ export default function Sales(props) {
 
     const disabled = ["sold", "terminated"].includes(car.status) && !StateManager.isAdmin();
 
+    const minDate = !StateManager.isAdmin();
+
     const sections = {
-        'date': () => <DateLine id={'date'} label={'Sale Date'} data={deal} updater={dateUpdate} minDate drop_is disabled={disabled}/>,
+        'date': () => <DateLine id={'date'} label={'Sale Date'} data={deal} updater={dateUpdate} minDate={minDate} drop_is disabled={disabled}/>,
         'sales-rep': () => <TextLine id={'sales_rep'} label='Sales Rep' data={deal} updater={updater} placeholder="First & Last" disabled={disabled} />,
         // 'delivery-date': () => <DateLine id={'delivery_date'} label={'Expected Delivery'} data={deal} updater={dateUpdate} minDate drop_is/>,
         'buyer': () => <Customers customer={car.buyer} stockNumber={stockNumber} type='buyer' disabled={disabled}/>,
@@ -194,24 +196,52 @@ export default function Sales(props) {
         'signed-packet': () => <NewFileLine id={"sales_doc"} label={"Signature Status"} allowable="imageLike" folder="deals" saveLocation={`cars/${car.id}`} data={car} removeDelete />,
     }.filterKeys(keysToRemove);
 
+    // Add new function to format currency
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+        }).format(amount || 0);
+    };
+
+    // Add new function to calculate total deposits
+    const getTotalDeposits = () => {
+        return (car.deposits || []).reduce((sum, deposit) => sum + (deposit.amount || 0), 0);
+    };
+
+    // Add new function to calculate total expenses
+    const getTotalExpenses = () => {
+        return (car.expenses || []).reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    };
+
+    // Add profit calculation function
+    const calculateProfit = () => {
+        const revenue = activeInvoice.revenue || 0;
+        const expenses = getTotalExpenses();
+        return revenue - expenses;
+    };
+
     return (
         <div>
-          <div style={{
-            backgroundColor: 'white', 
-            padding: '17px', 
-            marginBottom: "3px",
-            width: '100%', 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            borderBottomWidth: '3px' 
-          }}>
+          <div 
+            className="no-print"
+            style={{
+              backgroundColor: 'white', 
+              padding: '17px', 
+              marginBottom: "3px",
+              width: '100%', 
+              display: 'flex', 
+              justifyContent: 'space-between',
+              borderBottomWidth: '3px' 
+            }}
+          >
             <FormControlLabel control={<Checkbox checked={true} />} label={'Car'} />
             <div style={{display: 'flex', flexDirection: "column", alignItems: "flex-end"}}>
               {car.thumbnail && <img style={{ height: 120, width: 160 }} src={car.thumbnail} />}
               <h3>{car.year || ""} {car.make || ""} {car.model || ""}</h3>
             </div>
           </div>
-          <div style={{paddingBottom: 15}}>
+          <div style={{paddingBottom: 15}} className="no-print">
             {
               Object.keys(sections).map((section, i) => 
                   <div style={{marginBottom: '3px'}}>
@@ -220,12 +250,72 @@ export default function Sales(props) {
               )
             }
           </div>
-          <Button variant="contained" color="secondary" onClick={viewPDF}>
-              Preview Packet
-          </Button>
-          <Button variant="contained" color="primary" onClick={startSigning}>
-              Send for Signature
-          </Button>
+          <div className="section-to-print sales-summary-print hidden-ro-print">
+            <h2>Vehicle Sales Summary</h2>
+            
+            <div className="header-section">
+                <div className="vehicle-info">
+                    <div className="detail-row">
+                        <strong>Vehicle</strong> {car.year} {car.make} {car.model}
+                    </div>
+                    <div className="detail-row">
+                        <strong>Stock Number</strong> {stockNumber}
+                    </div>
+                    <div className="detail-row">
+                        <strong>Sales Rep</strong> {deal.sales_rep || 'N/A'}
+                    </div>
+                    <div className="detail-row">
+                        <strong>Sale Date</strong> {deal.date || 'N/A'}
+                    </div>
+                    <div className="detail-row">
+                        <strong>Customer</strong> {car.buyer?.display_name || 'N/A'}
+                    </div>
+                </div>
+                
+                {car.thumbnail && (
+                    <div className="image-container">
+                        <img src={car.thumbnail} alt="Vehicle" />
+                    </div>
+                )}
+            </div>
+
+            <div className="financial-section">
+                <div className="detail-row">
+                    <strong>Invoice Amount</strong> {formatCurrency(activeInvoice.total)}
+                </div>
+                <div className="detail-row">
+                    <strong>Total Deposits</strong> {formatCurrency(getTotalDeposits())}
+                </div>
+                <div className="detail-row">
+                    <strong>Total Expenses</strong> {formatCurrency(getTotalExpenses())}
+                </div>
+                <div className="detail-row profit-row">
+                    <strong>Total Profit</strong> {formatCurrency(calculateProfit())}
+                </div>
+            </div>
+            
+            {/* Expenses Detail - now starts on new page */}
+            {car.expenses && car.expenses.length > 0 && (
+                <div className="expenses-section">
+                    <h3>{car.stock} {car.year || ""} {car.make || ""} {car.model || ""}</h3>
+                    <h4>Expense Details</h4>
+                    {car.expenses.map((expense, index) => (
+                        <div key={index} className="expense-item">
+                            <span>{expense.memo}</span>
+                            <span>{formatCurrency(expense.amount)}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+          </div>
+          <div className="no-print">
+            <Button variant="contained" color="secondary" onClick={viewPDF}>
+                Preview Packet
+            </Button>
+            <Button variant="contained" color="primary" onClick={startSigning}>
+                Send for Signature
+            </Button>
+          </div>
         </div>
         );
 }

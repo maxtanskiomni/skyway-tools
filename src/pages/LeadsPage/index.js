@@ -52,7 +52,7 @@ export default function LeadsPage(props) {
 
       let leads = leadQueries.map(snapshots => snapshots.docs).flat().map(getDocData)
         .map(async lead => {
-          if(lead.stock && /^\d+-[A-Z]{2}$/.test(lead.stock)){
+          if(lead.stock && (/^\d+-[A-Z]{2,3}$/.test(lead.stock) || /^SN\d+$/.test(lead.stock) ) ){
             let car = await db.doc(`cars/${lead.stock}`).get();
             lead.car = car.data();
           }
@@ -64,7 +64,16 @@ export default function LeadsPage(props) {
 
 
       const isAuthed = (lead) => (StateManager.isBackoffice() || [StateManager.userID].includes(lead.sales_id));
-      leads = (await Promise.all(leads)).removeDuplicates().filter(isAuthed);
+      leads = (await Promise.all(leads))
+        .removeDuplicates()
+        .filter(isAuthed)
+        .map(lead => {
+
+          if(!!lead.phone) lead.new = ( !lead.contacts || lead.contacts.filter(c => ["phone", "text"].includes(c.type)).length < 1) && "isNew";
+          else lead.new =  !lead.contacts || lead.contacts.length === 0;
+          return lead;
+        })
+        .sort((a, b) => (b.sortDate || '').localeCompare(a.sortDate || '')); // Sort by sortDate in descending order
 
       data.pending = leads.filter(lead => lead.status === constants.lead_statuses.at(0) || !lead.status);
       data.nonResponsive = leads.filter(lead => lead.status === constants.lead_statuses.at(1));

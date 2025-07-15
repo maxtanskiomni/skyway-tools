@@ -57,6 +57,7 @@ export default function Inspection(props) {
       if(id == "engine-type") table="cars";
       if(id == "interior-color") table="cars";
       if(id == "interior-material") table="cars";
+      if(id.endsWith('-notes')) table="inspections";
       // return console.log(table, {[id]: value});
       updater(table, {[id]: value, needsDAUpdate: true});
     }
@@ -80,7 +81,7 @@ export default function Inspection(props) {
       {title: "interior", order_points: [], points: ["front-seats", "rear-seats", "center-console", "dashboard", "glove-box", "guages-condition", "steering-wheel", "carpet", "headliner", "rearview-mirror", "sun-visor", "door-panels", "arm-rests", "window-cranks", "door-sills", "door-jambs", "kick-panels", "interior-miscellaneous"]},
       {title: "engine-bay", order_points: ["belts", "oil", "coolant", "leaks", "battery-buddy", "battery-condition", "alternator", "engine-bay-miscellaneous"], points: ["bay-cleanliness", "hood-cleanliness", "engine-cleanliness", "mechanical-cleanliness", "belts", "oil", "washer-fluid", "coolant", "leaks", "battery-buddy", "battery-condition", "alternator", "engine-bay-miscellaneous"]},
       {title: "test-drive", order_points: "all", points: ["starter", "speedometer", "tachometer", "tempurature", "gas-gauge", "oil-gauge", "shift-indicator", "steering", "brakes", "shifting", "overall-ride", "drive-miscellaneous"]},
-      {title: "undercarriage", order_points: "all", points: ["undercoating", "full-leaks", "body-rails", "floorboards", "suspension", "exhaust-system", "muffler", "undercarraige-miscellaneous"]},
+      {title: "undercarriage", order_points: "all", points: ["undercoating", "full-leaks", "body-rails", "floorboards", "suspension", "exhaust-system", "muffler", "oil-pan-leak", "transmission-leak", "differential-leak", "undercarraige-miscellaneous"]},
       {title: "tasks", order_points: [], points: ["wash-exterior", "complete-undercoating", "undercarriage-pictures", "undercarriage-video", "secure-ziptie", "move-to-detail-queue", "send-to-service-dept"]},
     ];
 
@@ -136,9 +137,18 @@ export default function Inspection(props) {
                     {formatTitle(title)}
                   </Typography>
                   {components}
+                  <div style={{marginTop: '10px', marginBottom: '20px'}}>
+                    <TextLine 
+                      id={`${title}-notes`} 
+                      data={inspection} 
+                      onChange={updateText} 
+                      label={`${formatTitle(title)} Notes`}
+                      multiline
+                      rows={2}
+                    />
+                  </div>
                 </div>
               )
-
             })
           }
           <div style={{marginTop: 10}}>

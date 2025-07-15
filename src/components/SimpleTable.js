@@ -12,7 +12,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
 export default function SimpleTable(props) {
-  const { title = '', headers = [], rows = [] } = props;
+  const { title = '', headers = [], rows = [], omit =[] } = props;
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
   const sortedRows = React.useMemo(() => {
@@ -34,6 +34,7 @@ export default function SimpleTable(props) {
         if (isDate) {
           aValue = moment(aValue).toDate();
           bValue = moment(bValue).toDate();
+          console.log(aValue, bValue)
         }
 
         if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -69,6 +70,31 @@ export default function SimpleTable(props) {
 
   return (
     <React.Fragment>
+      {props.summaryTop && props.summary && (
+        <Paper className={classes.paper}>
+          <Table size="small">
+            <TableBody>
+              {props.summary.map &&
+                props.summary.map((row, i) => (
+                  <TableRow key={i}>
+                    <TableCell style={{ fontWeight: 'bold' }}>{row.label}</TableCell>
+                    <TableCell style={{ fontSize: 18, fontWeight: '800' }} align={'right'}>
+                      {formatValue(row.format, row.value)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {!props.summary.map && (
+                <TableRow>
+                  <TableCell style={{ fontWeight: 'bold' }}>{props.summary.label}</TableCell>
+                  <TableCell style={{ fontSize: 18, fontWeight: '800' }} align={'right'}>
+                    {formatValue(props.summary.format, props.summary.value)}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
       <Paper className={classes.paper}>
         <Typography component="h2" variant="h6" color="primary" gutterBottom>
           {title}
@@ -79,9 +105,9 @@ export default function SimpleTable(props) {
               {headers.map((header, i) => (
                 <TableCell
                   key={header.key}
+                  className={`${omit.includes(header.key) ? 'no-print' : ''} ${classes.clickableHeader}`}
                   align={setAlignment(headers.length, i)}
                   onClick={() => handleSort(header.key)}
-                  className={classes.clickableHeader}
                 >
                   <b>{header.label}</b> {renderSortIndicator(header.key)}
                 </TableCell>
@@ -96,7 +122,7 @@ export default function SimpleTable(props) {
                 style={{ cursor: row.rowAction ? 'pointer' : 'default' }}
               >
                 {headers.map((header, i) => (
-                  <TableCell key={header.key} align={setAlignment(headers.length, i)}>
+                  <TableCell key={header.key} className={omit.includes(header.key) ? 'no-print' : ''} align={setAlignment(headers.length, i)}>
                     {props.disabled ? (
                       <span style={{ color: 'inherit', textDecoration: 'inherit' }}>
                         {header.key === 'number' ? number + 1 : formatValue(header.format, row[header.key])}
@@ -117,7 +143,7 @@ export default function SimpleTable(props) {
           </TableBody>
         </Table>
       </Paper>
-      {props.summary && (
+      {!props.summaryTop && props.summary && (
         <Paper className={classes.paper}>
           <Table size="small">
             <TableBody>

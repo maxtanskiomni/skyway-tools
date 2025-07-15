@@ -16,6 +16,7 @@ import { Paper } from '@mui/material';
 import { StateManager } from '../utilities/stateManager';
 import firebase from '../utilities/firebase';
 import history from '../utilities/history';
+import AdminToast from '../components/AdminToast';
 
 function Copyright() {
   return (
@@ -57,6 +58,16 @@ export default function SignIn() {
 
   const [form, setForm] = React.useState({});
   const [remember, setRemeber] = React.useState(true);
+  const [showAdminToast, setShowAdminToast] = React.useState(false);
+
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdminParam = urlParams.get('isAdmin');
+    const today = new Date().toISOString().slice(0, 10);
+    if (isAdminParam === today) {
+      setShowAdminToast(true);
+    }
+  }, []);
 
   const onChange = (e) => {
     const {value, name, id} = e.target;
@@ -70,7 +81,11 @@ export default function SignIn() {
 
     StateManager.setLoading(true);
     try{
-      // if(remember) await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      // const persistenceType = remember
+      // ? firebase.auth.Auth.Persistence.LOCAL
+      // : firebase.auth.Auth.Persistence.SESSION;
+  
+      // await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.NONE);
       
       const userRecord = await firebase.auth().signInWithEmailAndPassword(email, password);
       console.log(userRecord.user.uid)
@@ -105,66 +120,70 @@ export default function SignIn() {
   return (
     <Container component="main" maxWidth="sm">
       <CssBaseline />
-      <Paper className={classes.paper}>
-        <Avatar className={classes.avatar}>
-          <LockOutlinedIcon />
-        </Avatar>
-        <Typography component="h1" variant="h5">
-          Sign in
-        </Typography>
-        <form className={classes.form} noValidate>
-          <TextField
-            variant="outlined"
-            margin="normal"
-            required
-            fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
-            autoComplete="email"
-            autoFocus
-            onChange={onChange}
-          />
-          <TextField
-            variant="outlined"
-            margin="normal"
-            required
-            fullWidth
-            name="password"
-            label="Password"
-            type="password"
-            id="password"
-            autoComplete="current-password"
-            onChange={onChange}
-          />
-          <FormControlLabel
-            control={<Checkbox defaultChecked value={remember} onClick={() => setRemeber(!remember)} color="primary" />}
-            label="Remember me"
-          />
-          <Button
-            // type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            className={classes.submit}
-            onClick={submitForm}
-          >
-            Sign In
-          </Button>
-          <Grid container>
-            <Grid item xs>
-              <Link href="#" variant="body2">
-                Forgot password?
-              </Link>
+      {showAdminToast ? (
+        <AdminToast />
+      ) : (
+        <Paper className={classes.paper}>
+          <Avatar className={classes.avatar}>
+            <LockOutlinedIcon />
+          </Avatar>
+          <Typography component="h1" variant="h5">
+            Sign in
+          </Typography>
+          <form className={classes.form} noValidate>
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              onChange={onChange}
+            />
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              onChange={onChange}
+            />
+            <FormControlLabel
+              control={<Checkbox defaultChecked value={remember} onClick={() => setRemeber(!remember)} color="primary" />}
+              label="Remember me"
+            />
+            <Button
+              // type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              className={classes.submit}
+              onClick={submitForm}
+            >
+              Sign In
+            </Button>
+            <Grid container>
+              <Grid item xs>
+                <Link href="#" variant="body2">
+                  Forgot password?
+                </Link>
+              </Grid>
+              <Grid item>
+                <Link href="/new-user" variant="body2">
+                  {"Don't have an account? Sign Up"}
+                </Link>
+              </Grid>
             </Grid>
-            <Grid item>
-              <Link href="/new-user" variant="body2">
-                {"Don't have an account? Sign Up"}
-              </Link>
-            </Grid>
-          </Grid>
-        </form>
-      </Paper>
+          </form>
+        </Paper>
+      )}
       <Box mt={8}>
         <Copyright />
       </Box>

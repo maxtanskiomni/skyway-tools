@@ -65,7 +65,8 @@ export default function DateLine(props) {
           dateFormat={props.dateFormat}
           style={{alignText: 'right', maxWidth:"30%", width:"50%" }}
           onChange={onChange} 
-          selected={date}
+          selected={date}     
+          autoComplete="off"
           customInput={<TextField label={props.label || ""}/>}
           showMonthYearPicker={props.showMonthYearPicker}
           minDate={props.minDate && new Date()}
@@ -75,6 +76,13 @@ export default function DateLine(props) {
           disabled={props.disabled}
         />
       </div>
+      <style>
+        {`
+          .react-datepicker-popper {
+            z-index: 100 !important;
+          }
+        `}
+      </style>
     </div>
   );
 }

@@ -125,7 +125,8 @@ class Store{
   }
 
   addFormWithStockNumberConcat = (collection, form) => {
-    form.stock = `${form.stock}-${form.location}`;
+    form.stock = `SN${form.stock}`;
+    // form.stock = `${form.stock}-${form.location}`;
     this.uploadForm(collection, form, form);
   }
 
@@ -347,15 +348,17 @@ class Store{
     this[location].mechanicID = id;
     this.activeFormSetter['mechanicID'](id);
     
+    // Add assignDate when mechanic is assigned
+    if (id) {
+      const assignDate = moment().format('YYYY/MM/DD');
+      this[location].assignDate = assignDate;
+      this.activeFormSetter['assignDate'](assignDate);
+    }
+    
     const cost = Number(rate) * Number(time);
     console.log(cost, id)
     this[location].cost = Number(cost);
     this.activeFormSetter['cost'](cost);
-
-    // const profit = Number(revenue) - Number(cost);
-    // this[location].profit = Number(profit);
-    // this.activeFormSetter['profit'](profit);
-    
   }
 
   calculatePartProfit = async (location) => {
@@ -513,14 +516,14 @@ const forms = {
             id: 'account',
             value: 'repair',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber} // requiredselections: [...getActiveStockNumbers()]},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true} // requiredselections: [...getActiveStockNumbers()]},
             ]
           },
           {
             id: 'account',
             value: 'inventory',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber} // requiredselections: [...getActiveStockNumbers()]},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true} // requiredselections: [...getActiveStockNumbers()]},
             ]
           },
         ]
@@ -561,14 +564,14 @@ const forms = {
             id: 'account',
             value: 'repair',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber} // requiredselections: [...getActiveStockNumbers()]},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true} // requiredselections: [...getActiveStockNumbers()]},
             ]
           },
           {
             id: 'account',
             value: 'inventory',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber} // requiredselections: [...getActiveStockNumbers()]},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true} // requiredselections: [...getActiveStockNumbers()]},
             ]
           },
         ]
@@ -584,7 +587,7 @@ const forms = {
   },
   costing: {
     inputs: [
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber,  required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel",  required: true},
       {type: 'text', id: 'cashPrice', label: 'Cash Price', inputType:"number", mask:cleanNumber,  required: true},
       {type: 'text', id: 'docFee', label: 'Doc Fee', inputType:"number", mask:cleanNumber,  required: true},
       {type: 'text', id: 'conciergeFee', label: 'Concierge Fee', inputType:"number", mask:cleanNumber,  required: true},
@@ -601,7 +604,7 @@ const forms = {
   deal: {
     inputs: [
       {type: 'text', id: 'i', label: 'id', required: true, visible:false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber,  required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel",  required: true},
       {type: 'blank'},
       {type: 'text', id: 'cashPrice', label: 'Cash Price', inputType:"number", mask:cleanNumber,  required: true},
       {type: 'text', id: 'downpayment', label: 'Down Payment', inputType:"number", mask:cleanNumber,  required: true},
@@ -644,7 +647,7 @@ const forms = {
     conditionalInputs:[
       {type: 'text', id: 'customer', label: 'Customer Name', required: true, visible: true, filter: false},
       {type: 'text', id: 'car', label: 'Car', required: true, visible: true, filter: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber,  required: false, visible: true, filter:  true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel",  required: false, visible: true, filter:  true},
       {type: 'blank', filter: true},
     ],
     action: store.uploadForm,
@@ -679,7 +682,7 @@ const forms = {
     conditionalInputs:[
       {type: 'text', id: 'customer', label: 'Customer Name', required: true, visible: true, filter: false},
       {type: 'text', id: 'car', label: 'Car', required: true, visible: true, filter: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber,  required: false, visible: true, filter:  true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel",  required: false, visible: true, filter:  true},
       {type: 'blank', filter: true},
     ],
     action: store.uploadForm,
@@ -705,7 +708,7 @@ const forms = {
     inputs: [
       {type: 'text', id: 'i', label: 'id', required: true, visible:false},
       {type: 'text', id: 'type', label: 'type', defaultValue: "finance", required: true, visible: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber,  required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel",  required: true},
       {type: 'blank'},
       {type: 'text', id: 'date', label: 'Date', defaultValue: moment().format('YYYY/MM/DD'), disabled: true, required: true, visible: false},
       {type: 'text', id: 'conciergeFee', label: 'Price', inputType:"number", mask:cleanNumber,  required: true},
@@ -732,7 +735,7 @@ const forms = {
   trade: {
     inputs: [
       {type: 'text', id: 't', label: 'id', required: true, visible:false},
-      {type: 'text', id: 'stock', label: 'Selling Car Stock Number', inputType:"tel", mask:cleanStockNumber,  required: true, disabled:true},
+      {type: 'text', id: 'stock', label: 'Selling Car Stock Number', inputType:"tel",  required: true, disabled:true},
       {type: 'text', id: 'year', label: 'Year', inputType:"number", required: true},
       {type: 'text', id: 'make', label: 'Make', inputType:"text", required: true},
       {type: 'text', id: 'model', label: 'Model', inputType:"text", required: true},
@@ -758,7 +761,7 @@ const forms = {
   },
   car: {
     inputs: [
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber, loadDefault:getNextStockNumber, disabled: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", loadDefault:getNextStockNumber, disabled: true},
       {type: 'text', id: 'year', label: 'Year', inputType:"text", required: true},
       {type: 'text', id: 'make', label: 'Make', inputType:"text", required: true},
       {type: 'text', id: 'model', label: 'Model', inputType:"text", required: true},
@@ -779,7 +782,7 @@ const forms = {
   },
   repairs: {
     inputs: [
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", mask:cleanStockNumber, required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", required: true},
       {type: 'blank'},
       {type: 'array', id: 'repairs', items:[
         {type: 'text', id: 'description', label: 'Description', inputType:"text", required: true},
@@ -799,7 +802,7 @@ const forms = {
       {type: 'text', id: 'iterable', label: 'iterable', loadDefault:() => 'expenses', required: true, visible: false},
       {type: 'text', id: 'account', label: 'Account', defaultValue: 'repair', required: true, visible: false},
       {type: 'text', id: 'type', label: 'Type', defaultValue: "sales", required: true, visible: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanStockNumber, required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
       {type: 'blank'},
       {type: 'array', id: 'expenses', tag:'iterable', items:[
         {type: 'text', id: 'e', label: 'Doc ID', required: true, visible: false},
@@ -849,6 +852,7 @@ const forms = {
       {type: 'select', id: 'account', label: 'Receiving Bank', selections: StateManager.deposit_banks},
       {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
       {type: 'text', id: 'memo', label: 'Memo', inputType:"text", required: true},
+      {type: 'text', id: 'type', label: 'Type', inputType:"text", disabled: !StateManager.isAdmin(), required: true},
       {type: 'file', id: 'receipt', label: 'Receipt', required: false},
     ],
     action: store.uploadForm,
@@ -865,7 +869,7 @@ const forms = {
       {type: 'select', id: 'isPayable', label: 'Is Paid?', loadDefault:() => true, defaultValue: true, selections: [{value: false, label: 'Yes'}, {value: true, label: 'No'}], visible: true},
       {type: 'array', id: 'expenses', tag:'iterable', items:[
         {type: 'text', id: 'e', label: 'Doc ID', required: true, visible: false},
-        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanStockNumber, required: true},
+        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
         {type: 'text', id: 'vendor', label: 'Vendor', inputType:"text", required: true},
         {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
         {type: 'text', id: 'memo', label: 'Memo', inputType:"text", required: true},
@@ -888,7 +892,7 @@ const forms = {
       {type: 'select', id: 'isPayable', label: 'Is Paid?', loadDefault:() => false, defaultValue: false, selections: [{value: false, label: 'Yes'}, {value: true, label: 'No'}], visible: true},
       {type: 'array', id: 'expenses', tag:'iterable', items:[
         {type: 'text', id: 'e', label: 'Doc ID', required: true, visible: false},
-        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanStockNumber, required: true},
+        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
         {type: 'text', id: 'vendor', label: 'Vendor', inputType:"text", required: true},
         {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
         {type: 'text', id: 'memo', label: 'Memo', inputType:"text", required: true},
@@ -1053,7 +1057,7 @@ const forms = {
       {type: 'text', id: 'cur_amount', label: 'Widthawl Amount', inputType:"number", mask:cleanNumber, required: true, disabled: true},
       {type: 'text', id: 'iterable', label: 'iterable', loadDefault:() => 'stockNumbers', required: true, visible: false},
       {type: 'array', id: 'stockNumbers', items:[
-        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, mask:cleanStockNumber},
+        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false},
         {type: 'text', id: 'memo', label: 'Memo', required: false, visible: true, disabled: false},
         {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
         {type: 'blank'},
@@ -1119,7 +1123,7 @@ const forms = {
       {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true, disabled: true},
       {type: 'blank'},
       {type: 'array', id: 'stockNumbers', items:[
-        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber},
+        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
         {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
       ]}
     ],
@@ -1143,7 +1147,7 @@ const forms = {
       {type: 'text', id: 'last_name', label: 'Last Name', inputType:"text", required: true},
       {type: 'text', id: 'email', label: 'Email', inputType:"text", required: true},
       {type: 'text', id: 'phone_number', label: 'Phone Number', inputType:"tel", required: true}, //mask:cleanPhoneNumber
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
       {type: 'text', id: 'source', label: 'Source', inputType:"text", required: true},
       {type: 'text', id: 'comments', label: 'Comments', inputType:"tel", required: true, multiline: true},
     ],
@@ -1166,7 +1170,7 @@ const forms = {
       {type: 'text', id: 'is_recieved', label: 'Status', loadDefault:() => false, disabled: true, required: true, visible: false},
       {type: 'text', id: 'is_ordered', label: 'Status', loadDefault:() => false, disabled: true, required: true, visible: false},
       {type: 'text', id: 'repair', label: 'Repair ID', disabled: true, required: true, visible: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanStockNumber, disabled: true, required: true, visible: false},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, disabled: true, required: true, visible: false},
       {type: 'text', id: 'vendor', label: 'Vendor', inputType:"text",required: true},
       {type: 'text', id: 'link', label: 'Link', inputType:"text",required: true},
       {type: 'text', id: 'desc', label: 'Description', inputType:"text",required: true},
@@ -1203,7 +1207,7 @@ const forms = {
       {type: 'text', id: 'entry_date', label: 'Date', loadDefault:() => moment().format('YYYY/MM/DD'), disabled: true, required: true, visible: false},
       {type: 'text', id: 'status', label: 'Status', loadDefault:() => 'active', disabled: true, required: true, visible: false},
       {type: 'array', id: 'stockNumbers', items:[
-        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, mask:cleanStockNumber},
+        {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
         {type: 'text', id: 'desc', label: 'Description', inputType:"text",required: true,  multiline: true},
         {type: 'text', id: 'part_link', label: 'Part Link', inputType:"text",required: true,  multiline: true},
         {type: 'blank'},
@@ -1246,7 +1250,7 @@ const forms = {
       {type: 'text', id: 'status_time', label: 'Status Time', loadDefault:() => moment().format('YYYY/MM/DD'), disabled: true, required: true, visible: false},
       {type: 'text', id: 'sub_status', label: 'Status', loadDefault:() => constants.sub_statuses[0], disabled: true, required: true, visible: false},
       {type: 'text', id: 'sub_status_time', label: 'Status Time', loadDefault:() => moment().format('YYYY/MM/DD'), disabled: true, required: true, visible: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, disabled: false, visible:true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true, disabled: true, visible:true},
       {type: 'select', id: 'location', label: 'Location', loadDefault:() => "FL", selections: constants.makeSelects("locations"), required: true},
       {type: 'text', id: 'vin', label: 'VIN', inputType:"text",required: true},
       {type: 'text', id: 'year', label: 'Year', inputType:"text", required: true},
@@ -1290,7 +1294,7 @@ const forms = {
             id: 'payment',
             value: 'detail',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
               {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: false},
             ]
           },
@@ -1298,35 +1302,35 @@ const forms = {
             id: 'payment',
             value: 'pictures',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'video',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'purchase',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'inspection',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'repair',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
               {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: false},
             ]
           },
@@ -1355,7 +1359,7 @@ const forms = {
             id: 'payment',
             value: 'detail',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
               {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: false},
             ]
           },
@@ -1363,35 +1367,35 @@ const forms = {
             id: 'payment',
             value: 'pictures',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'video',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'purchase',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'inspection',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
             ]
           },
           {
             id: 'payment',
             value: 'repair',
             inputs: [
-              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false, mask:cleanStockNumber},
+              {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: false, disabled: false},
               {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: false},
             ]
           },
@@ -1413,7 +1417,7 @@ const forms = {
     inputs: [
       {type: 'text', id: 'type', label: 'Type', defaultValue: "sales", required: true, visible: false},
       {type: 'text', id: 'date', label: 'Date', disabled: true, required: true, visible: false},
-      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanStockNumber, required: true},
+      {type: 'text', id: 'stock', label: 'Stock Number', inputType:"tel", inputProps:{inputmode: 'tel'}, required: true},
       {type: 'text', id: 'e', label: 'Doc ID', required: true, visible: false},
       {type: 'text', id: 'vendor', label: 'Vendor', inputType:"text", required: true, visible: false},
       {type: 'text', id: 'amount', label: 'Amount', inputType:"number", mask:cleanNumber, required: true},
@@ -1492,6 +1496,7 @@ const forms = {
   "order-services": {
     inputs: [
       {type: 'text', id: 'date', label: 'Date', loadDefault:() => moment().format('YYYY/MM/DD'), disabled: true, required: true, visible: false},
+      {type: 'text', id: 'assignDate', label: 'Assign Date', disabled: true, required: true, visible: false},
       {type: 'select', id: 'status', label: 'Status', loadDefault:() => "pending", selections: constants.makeSelects("service_statuses"),  visible: false},
       {type: 'text', id: 'mechanicID', label: 'mechanicID', disabled: true, required: true, visible: false},
       {type: 'text', id: 'order', label: 'Order', inputType:"tel", inputProps:{inputmode: 'tel'}, mask:cleanServiceStockNumber, required: true},

@@ -13,12 +13,15 @@ function Alert(props) {
 const headers = [ 
   {key:'number', label:'Number'},
   {key:'stock', label:'Stock Number'},
-  {key:'year', label:'Year'},
-  {key:'make', label:'Make'},
-  {key:'model', label:'Model'},
-  {key:'status', label:'Status'},
-  {key:'market_price', label:'Market Price', format: "usd"},
+  {key:'car', label:'Car'},
   {key:'price', label:'Listing Price', format: "usd"}, 
+  // {key:'year', label:'Year'},
+  // {key:'make', label:'Make'},
+  // {key:'model', label:'Model'},
+  {key:'status', label:'Status'},
+  {key:'date', label:'Arrival'},
+  {key:'status_time', label:'Last Update'},
+  // {key:'market_price', label:'Market Price', format: "usd"},
 ];
 
 export default function CarList(props) {
@@ -54,6 +57,7 @@ export default function CarList(props) {
           id: doc.id, 
           ...data,
           ...car,
+          car: `${car.year || ""}${car.year ? " " : ""}${car.make || ""}${car.make ? " " : ""}${car.model || ""}${car.model ? " " : ""}${car.trim || ""}`,
           market_price: car?.pricing?.excellent || "N/A",
           rowLink: `../car/${snap.id}`,
         };

@@ -10,7 +10,7 @@ import history from '../../utilities/history';
 
 export default function Service(props) {
   let { orders = [], filter = () => true, stockNumber } = props;
-  let rows = orders.filter(filter);
+  let rows = orders.filter(filter).sort((a, b) => moment(a.date).diff(moment(b.date)));;
 
   // Step 1: Sum values for each writer
   const sumsByWriter = rows.reduce((acc, order) => {
@@ -37,7 +37,7 @@ export default function Service(props) {
     {label: 'Profit', value: rows.reduce((a,c) => a + (c.revenue - c.cost), 0), format:"usd"},
     // {label: 'Deposits', value: rows.reduce((a,c) => a + c.deposits, 0), format:"usd"},
     {label: 'Receivables', value: rows.reduce((a,c) => a + (c.revenue - c.deposits), 0), format:"usd"},
-    {label: 'Internal Transfers', value: rows.filter(x => x.customer === "Skyway Classics").reduce((a,c) => a + c.revenue, 0), format:"usd"},
+    {label: 'Internal Transfers', value: rows.filter(x => x.customer.trim() === "Skyway Classics").reduce((a,c) => a + c.revenue, 0), format:"usd"},
     ...writerSummary
   ];
 
@@ -80,7 +80,7 @@ export default function Service(props) {
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
-        <SimpleTable {...tableData}/>
+        <SimpleTable {...tableData} summaryTop/>
       </Grid>
     </Grid>
   );

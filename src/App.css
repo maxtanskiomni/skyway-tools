@@ -50,44 +50,220 @@
   flex-wrap: wrap;
 }
 
+/* Hide print section during normal viewing */
+.hidden-ro-print {
+  display: none !important;
+  visibility: hidden !important;
+}
 
 @media print {
+  .hidden-ro-print {
+    display: block !important;
+    visibility: visible !important;
+  }
+
   @page {
-    size: portrait;
-    margin: 1cm; /* Maintain a margin for print */
+    size: auto;
+    margin: 1cm;
   }
 
+  /* Hide everything initially */
   body * {
-    visibility: hidden; /* Hide everything initially */
+    visibility: hidden;
   }
 
-  .section-to-print, .section-to-print * {
-    visibility: visible; /* Only make the printable section visible */
+  /* Reset all container heights */
+  .App, #root, body, html {
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
+  /* Show only what needs to be printed */
+  .section-to-print,
+  .section-to-print * {
+    visibility: visible !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    max-width: 100% !important;
+    width: auto !important;
+    font-size: 8pt !important;
+  }
+
+  /* Force tables and other wide elements to fit */
+  .section-to-print table,
+  .section-to-print div,
+  .section-to-print pre {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Reset container styles */
+  .MuiContainer-root {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Force word wrapping */
+  * {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Remove flex behaviors */
+  .root, .content {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  /* Hide elements with no-print class */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Adjust table-specific print styles */
+  .section-to-print table {
+    max-width: 100% !important;
+    width: 100% !important;
+    table-layout: fixed !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-collapse: collapse !important;
+  }
+
+  /* Adjust table cells */
+  .section-to-print table th,
+  .section-to-print table td {
+    padding: 2px !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    font-size: 7pt !important; /* Slightly smaller font */
+    max-width: 100px !important; /* Limit cell width */
+  }
+
+  /* Ensure content stays within page bounds */
   .section-to-print {
-    width: 60%; /* Keep width at 80% for better fit */
-    padding: 0; /* Remove padding to avoid overflow */
-    box-sizing: border-box; /* Ensure padding doesn't affect width */
+    box-sizing: border-box !important;
+    padding: 0 10px !important; /* Add small padding to prevent edge bleeding */
+    width: calc(100% - 20px) !important;
   }
 
-  /* Typography adjustments for readability */
-  .MuiTypography-root {
-    font-size: 20px; /* Adjust font size */
+  .sales-summary-print {
+    padding: 40px !important;
+    font-family: 'Helvetica Neue', Arial, sans-serif !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    color: #2c3e50 !important;
   }
 
-  /* Ensure list items or content don't break inside */
-  .MuiListItem-root, .MuiGrid-root {
-    page-break-inside: avoid; /* Prevent page break inside */
-    break-inside: avoid;
-    margin-bottom: 0; /* Remove extra margin at the bottom */
-    margin: 0 !important; /* Force margin to 0 to prevent extra space */
-    padding: 0 !important; /* Remove padding to avoid overflow or extra space */
+  .sales-summary-print h2 {
+    text-align: center !important;
+    font-size: 24pt !important;
+    font-weight: 300 !important;
+    margin-bottom: 30px !important;
+    color: #2c3e50 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 2px !important;
+    border-bottom: 2px solid #3498db !important;
+    padding-bottom: 10px !important;
   }
 
-  /* Optional: adjust the layout further to reduce unnecessary spaces */
-  .MuiListItemText-root {
-    margin: 0 !important; /* Remove margin around text */
-    padding: 0 !important; /* Remove extra padding */
+  .sales-summary-print .header-section {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    margin-bottom: 30px !important;
+  }
+
+  .sales-summary-print .vehicle-info {
+    flex: 1 !important;
+  }
+
+  .sales-summary-print .image-container {
+    text-align: right !important;
+    margin: 0 !important;
+    flex: 1 !important;
+  }
+
+  .sales-summary-print img {
+    height: 200px !important;
+    width: auto !important;
+    object-fit: contain !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  }
+
+  .sales-summary-print .detail-row {
+    margin: 15px 0 !important;
+    line-height: 1.6 !important;
+    page-break-inside: avoid !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .sales-summary-print .detail-row strong {
+    display: inline-block !important;
+    width: 180px !important;
+    font-weight: 500 !important;
+    color: #34495e !important;
+    position: relative !important;
+  }
+
+  .sales-summary-print .detail-row strong::after {
+    content: ":" !important;
+    position: absolute !important;
+    right: 20px !important;
+  }
+
+  .sales-summary-print .financial-section {
+    margin-top: 30px !important;
+    padding: 20px !important;
+    background-color: #f8f9fa !important;
+    border-radius: 8px !important;
+    page-break-inside: avoid !important;
+  }
+
+  .sales-summary-print .financial-section .detail-row {
+    margin: 10px 0 !important;
+  }
+
+  .sales-summary-print .expenses-section {
+    margin-top: 30px !important;
+    border-top: 2px solid #e9ecef !important;
+    padding-top: 20px !important;
+    page-break-before: always !important;
+    margin-top: 0 !important;
+    padding-top: 40px !important;
+  }
+
+  .sales-summary-print .expenses-section h3 {
+    font-size: 16pt !important;
+    font-weight: 400 !important;
+    color: #2c3e50 !important;
+    margin-bottom: 15px !important;
+    margin-top: 0 !important;
+  }
+
+  .sales-summary-print .expense-item {
+    margin: 8px 0 8px 20px !important;
+    padding: 5px 0 !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    border-bottom: 1px dotted #dee2e6 !important;
+    page-break-inside: avoid !important;
+  }
+
+  .sales-summary-print .expense-item:last-child {
+    border-bottom: none !important;
   }
 }

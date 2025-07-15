@@ -18,8 +18,10 @@ import Trades from './Trades.js';
 import Consignments from './Consignments.js';
 import { StateManager } from "../../utilities/stateManager.js";
 import Shipping from './Shipping.js';
+import ShippingTracker from './ShippingTracker.js';
 import Service from './Service.js';
 import SoldCars from './SoldCars.js';
+import Performance from './Performance.js';
 import TextLine from '../../components/TextLine.js';
 import constants from '../../utilities/constants.js';
 
@@ -77,6 +79,13 @@ export default function DealDashboard(props) {
             data.nto_amount = data.car.nto || 0;
             data.updated_nto = data.car.updated_nto || 0;
             data.nto_profit = data.nto_amount - data.updated_nto;
+
+            //customer data
+            const customerSnap = await db.doc('customers/'+data.buyer).get();
+            data.customer = customerSnap.exists ? customerSnap.data() : {};
+            data.state = data.customer.state || "";
+            data.outOfState = data.state !== "FL" ? "out of state" : false;
+            data.inState = data.state === "FL" ? "in state" : false;
   
             //Funding data
             const invoiceSnap = await db.doc('invoices/'+data.invoice).get();
@@ -109,10 +118,10 @@ export default function DealDashboard(props) {
             data.excess = Math.max(0, data.basis - 5000);
             data.tax_rate = (100 * (data.invoice.salesTax + data.invoice.surtax) / ((data.sales - data.netTrade) || 1)).toLocaleString(undefined, {maximumFractionDigits: 2})+"%";
   
-            //Payables data
+            //NTO data
             data.payables = data.expenses.filter(x => moment(x.paidDate).isAfter(monthEnd, 'month') || x.isPayable)
                                     .filter(x => (x.memo || "").includes("NTO"))
-                                    .reduce((a,c) => a + c.amount, 0);
+                                    .reduce((a,c) => a + (data.updated_nto || c.amount), 0);
   
             //Misc data
             data.profit = data.revenue - data.cogs;
@@ -161,14 +170,17 @@ export default function DealDashboard(props) {
             data.cogs = data.expenses.map(expense => expense.amount).reduce((a,c) => a + c, 0);
             data.unpaid = data.expenses.filter(x => x.isPayable).reduce((a,c) => a + c.amount, 0);
   
-            //Payables data
+            //NTO data
             data.payables = data.expenses.filter(x => moment(x.paidDate).isAfter(monthEnd, 'month') || x.isPayable)
                                     .filter(x => (x.memo || "").includes("NTO"))
-                                    .reduce((a,c) => a + c.amount, 0);
+                                    .reduce((a,c) => a + (data.car.updated_nto || c.amount), 0);
   
             //Misc data
             data.profit = data.revenue - data.cogs;
             data.rowLink = `../car/${data.stock}`;
+            data.isCurrentPeriod = moment(data.date).isSameOrAfter(monthStart, 'month') && moment(data.date).isSameOrBefore(monthEnd, 'month');
+            data.isPriorPeriod = moment(data.date).isBefore(monthStart, 'month');
+            data.isFuturePeriod = !data.date || moment(data.date).isAfter(monthEnd, 'month');
   
             return data;
           }
@@ -191,9 +203,13 @@ export default function DealDashboard(props) {
                     .map(x => x.stock);
                     
         paidCars = new Set(paidCars);
-        const paidCarAmounts = [...paidCars].map( (stock, i) => {
+        //Updated to bring in the updated NTO amount
+        const paidCarAmounts = [...paidCars].map( async (stock, i) => {
           const relevantTransactions = transactions.filter(x => x.stock === stock);
-          const paid = relevantTransactions.filter(x => (x.memo || "").includes("NTO")).reduce((a,c) => a + c.amount, 0);
+          const carSnap = await db.doc('cars/'+stock).get();
+          const carData = carSnap.data() || {};
+          const updatedNTO = carData.updated_nto || 0;
+          const paid = relevantTransactions.filter(x => (x.memo || "").includes("NTO")).reduce((a,c) => a + (updatedNTO || c.amount), 0);
           const dates = relevantTransactions.map(x => moment(x.date));
           const date = moment.max(dates).format("MM-DD-YYYY");
           
@@ -205,7 +221,28 @@ export default function DealDashboard(props) {
           }
         });
 
-        return paidCarAmounts;
+        return Promise.all(paidCarAmounts);
+      }
+
+      async function getPeriodPurchases() {
+        const trasnactionSnap = await db.collection('purchases')
+          .where('paidDate', '>=', monthStart.format("YYYY/MM/DD"))
+          .where('paidDate', '<=', monthEnd.format("YYYY/MM/DD"))
+          .get();
+        
+        const transactions = trasnactionSnap.docs.map((doc, i) => doc.data()).map(x => ({...x, type: "period_purchase"}));
+        return transactions;
+      }
+
+      async function getMechLabor() {
+        const laborSnap = await db.collection('services')
+          .where('status', '==', constants.service_statuses.at(-1))
+          .where('status_time', '>=', monthStart.format("YYYY/MM/DD"))
+          .where('status_time', '<=', monthEnd.format("YYYY/MM/DD"))
+          .get();
+        
+        const transactions = laborSnap.docs.map((doc, i) => doc.data()).map(x => ({...x, type: "labor"}));
+        return transactions;
       }
 
       async function getServiceData(params) {
@@ -214,11 +251,19 @@ export default function DealDashboard(props) {
           const {revenue = 0} = order;
 
           let car = "";
+          let car_stock = null;
+          let car_data = null;
+          let deal_data = null;
           if(order.car){
-            console.log(order.id, order.car)
             let carDoc = await db.doc(`cars/${order.car}`).get();
+            car_stock = carDoc.id;
             carDoc = carDoc.data() || {};
+            car_data = carDoc;
             car = `${carDoc.year || ''} ${carDoc.make || ''} ${carDoc.model || ''}`;
+            
+            let dealDoc = await db.doc(`deals/${order.car}`).get();
+            dealDoc = dealDoc.data() || {};
+            deal_data = dealDoc;
           }else {
             car = "No car"
           }
@@ -243,6 +288,10 @@ export default function DealDashboard(props) {
           const purchase_value = expenses.reduce((a,c) => a + (c.amount || 0), 0);
           const cost = labor_value + purchase_value;
           const profit = revenue - cost;
+
+          const isCurrentPeriod = moment(deal_data?.date).isSameOrAfter(monthStart, 'month') && moment(deal_data?.date).isSameOrBefore(monthEnd, 'month');
+          const isPriorPeriod = moment(deal_data?.date).isBefore(monthStart, 'month');
+          const isFuturePeriod = !deal_data?.date || moment(deal_data?.date).isAfter(monthEnd, 'month');
         
           return {
             ...order,
@@ -251,10 +300,16 @@ export default function DealDashboard(props) {
             profit,
             cost,
             car,
+            car_stock: car_stock,
+            car_data,
+            deal_data,
             customer,
             deposits,
             rowLink: `/service-order/${order.id}`,
             type: "service",
+            isCurrentPeriod,
+            isPriorPeriod,
+            isFuturePeriod
           };
         });
         promises = await Promise.all(promises);
@@ -267,9 +322,10 @@ export default function DealDashboard(props) {
         getData({type: "shipping_in"}), 
         getData({type: "finance"}), 
         getTransactionData(),
-        getServiceData()
+        getServiceData(),
+        getPeriodPurchases(),
+        getMechLabor()
       ]);
-      console.log(tableData);
 
       setPayload(tableData.flat());
 
@@ -279,6 +335,7 @@ export default function DealDashboard(props) {
   }, [month]);
 
   const keysToRemove = StateManager.isBackoffice() ? [] : [
+    "performance",
     "finance",
     "shipping",
     "service",
@@ -293,7 +350,25 @@ export default function DealDashboard(props) {
     i.filter(x => x.type === "shipping").filter(x => defaultFilter(x, term))
   ].flat();
 
+  const shippingTrackerRows = (i) => {
+    const shippingStocks = i.filter(x => x.type === "shipping").map(x => x.stock);
+    const openServiceOrders = i.filter(x => x.type === "service" && x.status !== "complete")
+      .reduce((acc, order) => {
+        acc[order.car_stock] = (acc[order.car_stock] || 0) + 1;
+        return acc;
+      }, {});
+      
+    return i.filter(x => x.type === "deal")
+      .filter(x => defaultFilter(x, term))
+      .map(x => ({
+        ...x,
+        complete: shippingStocks.includes(x.stock),
+        openServiceCount: openServiceOrders[x.stock] || 0
+      }));
+  };
+
   const sections = {
+    'performance': (i) => <Performance data={i} />,
     'cars-sold': (i) => <SoldCars rows={i.filter(x => x.type === "deal")} />,
     'verified-deals': (i) => <Deals rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} filter={x => x.deposits >= 1000} />,
     'working': (i) => <Deals rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} filter={x => x.deposits < 1000} />,
@@ -301,6 +376,7 @@ export default function DealDashboard(props) {
     'funding': (i) => <Funding rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} />,
     'finance': (i) => <Finance rows={i.filter(x => x.type === "finance").filter(x => defaultFilter(x, term))} />,
     'shipping': (i) => <Shipping rows={shippingRows(i)}  />,
+    'shipping-tracker': (i) => <ShippingTracker rows={shippingTrackerRows(i)}  />,
     'service': (i) => <Service orders={i.filter(x => x.type === "service").filter(x => defaultFilter(x, term))}  />,
     'trades': (i) => <Trades rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} />,
     'payables': (i) => <Payables rows={i.filter(x => defaultFilter(x, term))} />,

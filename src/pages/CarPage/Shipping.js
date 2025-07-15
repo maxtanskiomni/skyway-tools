@@ -89,7 +89,10 @@ export default function Sales(props) {
 
     const dateUpdate = async (id, date) => {
         let update = {[id]: !date ? "" : moment(date).format('MM-DD-YYYY')}
-        if(id == "shipping_date") update.shipping_month = !date ? "" : moment(date).format('YYYY-MM');
+        if(id == "shipping_date") {
+          update.shipping_month = !date ? "" : moment(date).format('YYYY-MM');
+          update.delivered = !!date;
+        }
         await firebase.firestore().doc('deals/'+stockNumber).set(update, {merge:true});
     }
 
@@ -116,7 +119,7 @@ export default function Sales(props) {
         'profit': () => <ProfitSummary revenue={activeInvoice.total} expenses={car.shipping_expenses}/>, 
         'bill-of-laden': () => <NewFileLine id={"bill_of_laden"} label={"Bill of Laden"} allowable="imageLike" folder="shipping" saveLocation={`cars/${stockNumber}`} data={car} />,
         'payment': () => <PaymentLine label="Amount Owed" items={[{desc: "Shipping", amount: amountOwed}]} reference={stockNumber} customer={car.buyer} type="shipping" title={paymentDescription} thumbnail={car.thumbnail} />,
-        'complete': () => <Check id={'shipping_complete'} label={'All Tasks Complete'} data={deal} updater={updater} />,
+        'complete': () => <Check id={'shipping_complete'} label={'Shipping Complete'} data={deal} updater={updater} />,
       }.filterKeys(keysToRemove);
 
     return (

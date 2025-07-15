@@ -31,7 +31,11 @@ export default function CarSummary(props) {
   const { car } = props;
   const classes = useStyles();
 
-  const keysToRemove = (StateManager.isManager() || StateManager.isPorter()) ? [] : [
+  const shouldKeepKeys = StateManager.isManager() 
+  || StateManager.isPorter() 
+  || (StateManager.isAdmin() && !["sold", "terminated"].includes(car.status));
+
+  const keysToRemove = shouldKeepKeys ? [] : [
     "status",
     "sub_status",
     "status_time", 
@@ -43,17 +47,22 @@ export default function CarSummary(props) {
     {key:'make', type: 'text'},
     {key:'model', type: 'text'},
     {key:'trim', type: 'text'},
+    {key:'body-style', label: 'Body Style', type: 'select', values: constants.bodyStyles.map(x => ({label: formatTitle(x), value:x}))},
+    {key:'door-count', label: 'Door Count', type: 'select', values: constants.doorCounts.map(x => ({label: x, value:`${x}`}))},
     {key:'color', type: 'text'},
     {key:'vin', type: 'text'},
-    {key:'title_number', type: 'text'},
+    // {key:'title_number', type: 'text'},
     {key:'miles', type: 'text'},
     {key:'price', type: 'text'},
     {key:'engine-type', type: 'text'},
+    {key:'cylinders', label: 'Cylinders', type: 'select', values: constants.cylinderCounts.map(x => ({label: x, value:`${x}`}))},
     {key:'interior-color', type: 'text'},
     {key:'interior-material', type: 'text'},
     {key:'transmission', label: 'Transmission', type: 'select', values: constants.trans_types.map(x => ({label: formatTitle(x), value:x}))},
+    {key:'drivetrain', label: 'Drivetrain', type: 'select', values: constants.drivetrains.map(x => ({label: formatTitle(x), value:x}))},
     {key:'status', type: 'select', values: constants.statuses.filter(x => x != "active" || StateManager.isManager()).map(x => ({label: formatTitle(x), value:x})), callback: timeUpdate},
     {key:'sub_status', label: 'Sub Status', type: 'select', values: constants.sub_statuses.map(x => ({label: formatTitle(x), value:x})), callback: timeUpdate},
+    {key:'location', label: 'Location', type: 'select', values: constants.makeSelects("locations")},
     {key:'status_time', type: 'text'},
     {key:'is_actual', label: 'Actual Miles', type: 'check'},
     {key:'is_excess', label: 'Miles In Excess', type: 'check'},
@@ -72,7 +81,7 @@ export default function CarSummary(props) {
     </>
   )
 
-  const title = `${car.year || ""}${car.year ? " " : ""}${car.make || ""}${car.make ? " " : ""}${car.model || ""}`;
+  const title = `${car.year || ""}${car.year ? " " : ""}${car.make || ""}${car.make ? " " : ""}${car.model || ""}${car.model ? " " : ""}${car.trim === "Base" ? "" : car.trim || ""}`;
   const slug = car.slug || "/"+`${car.stock}-${title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
 
 
@@ -238,7 +247,8 @@ const RenderInput = (props) => {
   if(item.type === "text"){
     return (
       <TextField
-        defaultValue={car[item.key] || ''}
+        value={value || ''}
+        onChange={(e) => setValue(e.target.value)}
         onBlur={onChange}
         id={item.key}
         name={item.key}

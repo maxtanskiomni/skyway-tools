@@ -21,7 +21,6 @@ import RequestManager from '../utilities/requestManager.js';
 export default function PaymentLine(props) {
   const { reference, customer = {}, label = "", title = "", type ="", thumbnail = "", test = false, enable = false, revenue, deposits } = props;
   let {items = []} = props;
-  console.log(deposits, items)
   const devtype = process.env.NODE_ENV === "development" ? "test" : "prod";
   if(items.length <= 0){
     items = [{desc: "Invoice Amount", amount: revenue}, {desc: "Previous Deposits", amount: -deposits }];
@@ -44,8 +43,9 @@ export default function PaymentLine(props) {
   }
 
   const sendLink = async (shouldSend = false) => {
+    console.log(customer)
     if(amount < 1) StateManager.setAlertAndOpen("The amount is too low to run a credit card.", "error");
-    else if(!customer.first_name || !customer.last_name) StateManager.setAlertAndOpen("The customer is missing information", "error");
+    else if((!customer.first_name || !customer.last_name) && !customer.customerName) StateManager.setAlertAndOpen("The customer is missing information", "error");
     else if(!customer.email) StateManager.setAlertAndOpen("The customer needs an email to send a link.", "error");
     else if(!customer.phone_number) StateManager.setAlertAndOpen("The customer needs a phone number to send a link.", "error");
     else{
@@ -53,7 +53,7 @@ export default function PaymentLine(props) {
       let cust_id = {}
       if(!customer.stripe_id){
         let cust_vars = filterCustomer(customer, ["email"]);
-        cust_vars.name = `${customer.first_name || ""} ${customer.last_name || ""}`;
+        cust_vars.name = customer.customerName ? customer.customerName : `${customer.first_name || ""} ${customer.last_name || ""}`;
         cust_vars.devtype = devtype;
         const stripe_cust = await RequestManager.post({function: "makeStripeCustomer", variables: {params: cust_vars}});
         console.log(stripe_cust)

@@ -139,7 +139,7 @@ const processors = {
 }
 
 const sorters = {
-  inventory: (a,b) => +(b.stock.replace(/-.*/, "")) - (a.stock.replace(/-.*/, "")),
+  inventory: (a, b) => +(b.stock.replace(/\D/g, "")) - +(a.stock.replace(/\D/g, "")),
   "purchase-orders": (a,b) => b.position - a.position,
   deposits: (a,b) => new Date(b.date) - new Date(a.date),
   leads: (a,b) => moment(b.date).valueOf() - moment(a.date).valueOf(),
@@ -169,6 +169,7 @@ const components = {
 
 const defaultFilter = (item = {}, term) => Object.values(item).filter(x => typeof x === "string").reduce((a,c) => a || c.toLowerCase().includes(term.toLowerCase()), false)
 const filters = {
+  location:  (item = {}, term) => (item.location || "").toLowerCase().includes(term.toLowerCase()),
 }
 
 const headerFields = {

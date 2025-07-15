@@ -48,10 +48,10 @@ export default function Summary(props) {
     const statusUpdater = async (id, value) => {
       const update = {status: value, status_time: moment().format("YYYY/MM/DD")};
 
-      if(value === "complete" && customer.display_name === "Skyway Classics"){
+      const date = moment().format('YYYY/MM/DD');
+
+      if(value === "complete" && customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49"){
         //Add deposit for full value 
-        const date = moment().format('YYYY/MM/DD');
-    
         //Create deposit
         const deposit = {
           type: "service",
@@ -61,7 +61,7 @@ export default function Summary(props) {
           amount: revenue,
           memo: "TFD - Transfer from deal",
         }
-        await firebase.firestore().collection("deposits").doc().set(deposit, {merge: true});
+        await firebase.firestore().collection("deposits").doc(stockNumber).set(deposit, {merge: true});
 
         //Create expense
         const expense = {
@@ -75,7 +75,10 @@ export default function Summary(props) {
           vendor: "Skyway Classics"
         }
         await firebase.firestore().collection("purchases").doc(stockNumber).set(expense, {merge: true});
-        
+      
+      }
+
+      if(value === "complete"){
         //Update the status if one is not there;
         if(!order.complete_date) await dateUpdate("complete_date", date);
       }
@@ -92,10 +95,16 @@ export default function Summary(props) {
       StateManager.updateCar(update);
     }
 
-    const depositsAmount = order.deposits.reduce((a,c) => a + (c.amount || 0), 0);
+    const depositsAmount = (order.deposits || []).reduce((a,c) => a + (c.amount || 0), 0);
 
-    const neg_expenses = [...order.services.map(x => ({amount: -(x.cost || 0)})), ...order.expenses.map(x => ({amount: -(x.amount || 0)}))];
-    const expenses = [...order.services.map(x => ({amount: (x.cost || 0)})), ...order.expenses.map(x => ({amount: (x.amount || 0)}))];
+    const neg_expenses = [
+      ...(order.services || []).map(x => ({amount: -(x.cost || 0)})), 
+      ...(order.expenses || []).map(x => ({amount: -(x.amount || 0)}))
+    ];
+    const expenses = [
+      ...(order.services || []).map(x => ({amount: (x.cost || 0)})), 
+      ...(order.expenses || []).map(x => ({amount: (x.amount || 0)}))
+    ];
 
     const paymentDescription = `${car.year || ""} ${car.make || ""} ${car.model || ""}`;
 
@@ -108,7 +117,7 @@ export default function Summary(props) {
         StateManager.setPaymentLineAmount(value - depositsAmount);
 
         //Sync bill to stock number if skyway is customer
-        if(customer.display_name === "Skyway Classics"){
+        if(customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49"){
           const expense = {
             date: moment().format('MM/DD/YYYY'),
             isPayable: true,
@@ -139,18 +148,21 @@ export default function Summary(props) {
       }
     }
 
-    const activeSelections = constants.makeSelects("order_statuses", undefined, (status) => customer.display_name === "Skyway Classics" || revenue<=depositsAmount || status !== "complete");
+    const activeSelections = constants.makeSelects("order_statuses", undefined, (status) => customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49" || revenue<=depositsAmount || status !== "complete");
+    const mechanicNames = constants.makeSelects("mechanicNames", undefined, (name) => name);
+
+    const minDate = !StateManager.isAdmin();
 
     const sections = {
-        'date': () => <DateLine id={'date'} label={'Start Date'} data={order} updater={dateUpdate} minDate drop_is disabled={order.disabled} />,
-        'target-date': () => StateManager.userType === "admin" ? <DateLine id={'target_date'} label={'Target Date'} data={order} updater={dateUpdate} minDate drop_is disabled={order.disabled}/> : <></>,
-        'complete-date': () => <DateLine id={'complete_date'} label={'Complete Date'} data={order} updater={dateUpdate} minDate drop_is disabled={order.disabled}/>,
-        'writer': () => <TextLine id={'writer'} label='Service Writer' data={order} updater={updater} placeholder="Service Writer" disabled={order.disabled} />,
-        'customer': () => <Customers customer={order.customer} stockNumber={stockNumber} type='customer' table="orders" disabled={order.disabled}/>,
+        'date': () => <DateLine id={'date'} label={'Start Date'} data={order} updater={dateUpdate} minDate={minDate} drop_is disabled={order.disabled} />,
+        // 'target-date': () => StateManager.userType === "admin" ? <DateLine id={'target_date'} label={'Target Date'} data={order} updater={dateUpdate} minDate={minDate} drop_is disabled={order.disabled}/> : <></>,
+        'complete-date': () => <DateLine id={'complete_date'} label={'Complete Date'} data={order} updater={dateUpdate} minDate={minDate} drop_is disabled={order.disabled}/>,
+        // 'writer': () => <TextLine id={'writer'} label='Service Writer' data={order} updater={updater} placeholder="Service Writer" disabled={order.disabled} />,
+        // "mechanicName": () => <SelectLine id={'mechanicName'} label={'Primary Mechanic'} selections={mechanicNames} data={order} updater={updater} disabled={order.disabled} />,
+        'customer': () => <Customers customer={order.customer} stockNumber={stockNumber} type='customer' table="orders" disabled={order.disabled} autoComplete={false}/>,
         'car': () => <Cars car={order.car} stockNumber={stockNumber} type='car' table="orders" disabled={order.disabled}/>,
         "status": () => <SelectLine id={'status'} label={'Status'} selections={activeSelections} data={order} updater={statusUpdater} disabled={order.disabled} />,
         'revenue': () => StateManager.isBackoffice() ? <TextLine id={'revenue'} label='Revenue' data={order} updater={updater} placeholder="Revenue" disabled={order.disabled} /> : <></>,
-        // 'revenue': () => <ProfitSummary label={"Revenue"} revenue={revenue} expenses={[]} expose/>, 
         'deposits': () => <Transactions items={order.deposits} stockNumber={order.stock} checkLimit={revenue || 0} type="deposits" group="service" disabled={order.disabled} showSummary/>,
         'expenses': () => <ProfitSummary label={"Expenses"} expenses={neg_expenses} disabled={order.disabled} expose/>,
         'funding': () => <FundingSummary revenue={revenue} deposits={order.deposits} disabled={order.disabled}/>, 

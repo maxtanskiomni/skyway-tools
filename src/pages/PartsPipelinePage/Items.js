@@ -34,8 +34,10 @@ const headers = {
     {key:'name', label:'Part', noLink:true},
     {key:'partNumber', label:'Part Number', noLink:true},
     {key:'vendor', label:'Vendor', noLink:true},
-    {key:'orderDate', label:'Order Date', noLink:true},
-    {key:'arrivalDate', label:'Estimated Arrival', noLink:true, format: "date"},
+    {key:'quantity', label:'Quantity', noLink:true},
+    {key:'requester', label:'Requester', noLink:true},
+    // {key:'orderDate', label:'Order Date', noLink:true},
+    // {key:'arrivalDate', label:'Estimated Arrival', noLink:true, format: "date"},
     {key:'href', label:'Link', noLink:true}
   ],
   inbound: [ 

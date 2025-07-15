@@ -27,6 +27,21 @@ import { v4 as uuidv4 } from 'uuid';
 import { StateManager } from '../utilities/stateManager';
 import Backdrop from '@mui/material/Backdrop';
 import ResultsList from './ResultsList';
+import AddCarDialog from './AddCarDialog';
+import AddServiceOrderDialog from './AddServiceOrderDialog';
+import {
+  ListItemIcon,
+  ListItemText,
+  Box,
+  Paper,
+} from '@mui/material';
+import {
+  Dashboard as DashboardIcon,
+  Settings as SettingsIcon,
+  Bolt as BoltIcon,
+  Person as PersonIcon,
+} from '@mui/icons-material';
+import { menuSections, userSection, renderMenuSections } from '../config/menuItems';
 
 export default function Header(props) {
     const classes = useStyles();
@@ -35,6 +50,8 @@ export default function Header(props) {
     const [anchor, setAnchor] = React.useState(null);
     const [results, setResults] = React.useState([]);
     const [selected, setSelected] = React.useState(0);
+    const [isAddCarDialogOpen, setIsAddCarDialogOpen] = React.useState(false);
+    const [isAddServiceOrderDialogOpen, setIsAddServiceOrderDialogOpen] = React.useState(false);
 
     const hendleOpen = (event) => {
       console.log('open')
@@ -68,7 +85,27 @@ export default function Header(props) {
         }));
         hits = [...hits, cur_hits];
       });
-      hits = hits.flat();
+
+      hits = hits.map((list, i) => {
+        
+        if(i>0) return list
+
+        list.sort((a, b) => {
+          // Extract the stock number (numbers only) or set it to Infinity if there's no stock
+          const stockA = a.stock ? parseInt(a.stock.replace(/\D/g, ''), 10) : Infinity;
+          const stockB = b.stock ? parseInt(b.stock.replace(/\D/g, ''), 10) : Infinity;
+        
+          // First, compare by stock number (numerically)
+          if (stockA !== stockB) {
+            return stockB - stockA;
+          }
+        
+          // If stock numbers are the same or non-existent, compare by name (alphabetically)
+          return (a.last_name || "").localeCompare(b.last_name);
+        })
+        return list;
+      }).flat();
+
       setResults(hits);
     }
 
@@ -92,12 +129,6 @@ export default function Header(props) {
       history.push(`/form/add-task?`);
       handleClose();
     }
-
-    // const addLead = () => {
-    //   const id = uuidv4();
-    //   history.push(`/form/new-lead?c=${id}`);
-    //   handleClose();
-    // }
 
     const addRepair = () => {
       const url = new URL(window.location.href)
@@ -128,15 +159,10 @@ export default function Header(props) {
       handleClose();
     }
 
-    const addCar = async () => {
-      const counters = await firebase.firestore().doc('admin/counters').get();
-      const new_stock = counters.data().lastStock + 1;
-      const url = new URL(window.location.href);
-      const redirect = url.pathname;
-      history.push(`/form/add-car?stock=${new_stock}&redirect=${redirect}`);
+    const addCar = () => {
+      setIsAddCarDialogOpen(true);
       handleClose();
     }
-
 
     const addSO = async () => {
       const counters = await firebase.firestore().doc('admin/counters').get();
@@ -179,7 +205,29 @@ export default function Header(props) {
       handleClose();
     }
 
-  
+    const addServiceOrder = () => {
+      setIsAddServiceOrderDialogOpen(true);
+      handleClose();
+    }
+
+    const handleAction = (action) => {
+      switch (action) {
+        case 'addCar':
+          setIsAddCarDialogOpen(true);
+          break;
+        case 'addServiceOrder':
+          setIsAddServiceOrderDialogOpen(true);
+          break;
+        case 'signOut':
+          firebase.auth().signOut();
+          history.go(0);
+          break;
+        default:
+          break;
+      }
+      handleClose();
+    };
+
     return <>
       <AppBar position="absolute" className={clsx(classes.appBar, open && classes.appBarShift)}>
         <Toolbar className={classes.toolbar} style={{justifyContent: 'space-between'}}>
@@ -195,6 +243,7 @@ export default function Header(props) {
               onChange={updateValue}
               onKeyDown={keyPress}
               placeholder={props.title || 'Search for something..'}
+              autoComplete="off"
             />
           }
           {
@@ -206,54 +255,48 @@ export default function Header(props) {
           <Menu
             id="menu"
             anchorEl={anchor}
-            // getContentAnchorEl={null}
-            elevation={0}
+            elevation={3}
             anchorOrigin={{
               vertical: 'bottom',
-              horizontal: 'center',
+              horizontal: 'right',
             }}
             transformOrigin={{
               vertical: 'top',
-              horizontal: 'center',
+              horizontal: 'right',
             }}
             keepMounted
             open={Boolean(anchor)}
             onClose={handleClose}
+            PaperProps={{
+              className: classes.menuPaper,
+            }}
           >
-            {/* <MenuItem onClick={() => history.push(`/sales-dashboard`)}>Lead Dashboard</MenuItem> */}
-            <MenuItem onClick={() => navigate(`/`)}>Home</MenuItem>
-            {StateManager.isUserAllowed("pipeline") && <MenuItem onClick={() => navigate(`/pipeline`)}>Process Pipeline</MenuItem>}
-            {StateManager.isUserAllowed("service-pipeline") && <MenuItem onClick={() => navigate(`/service-pipeline`)}>Service Pipeline</MenuItem>}
-            {StateManager.isUserAllowed("service-pipeline") && <MenuItem onClick={() => navigate(`/service-priorities`)}>Service Priorities</MenuItem>}
-            {StateManager.isUserAllowed("service-board") && <MenuItem onClick={() => navigate(`/service-board`)}>Service Board</MenuItem>}
-            {StateManager.isUserAllowed("parts-pipeline") && <MenuItem onClick={() => navigate(`/parts-pipeline`)}>Parts Pipeline</MenuItem>}
-            {StateManager.isUserAllowed("deal-dashboard") && <MenuItem onClick={() => navigate(`/deal-dashboard/${moment().format("YYYY-MM")}`)}>Deal Dashboard</MenuItem>}
-            {StateManager.isUserAllowed("accounting") && <MenuItem onClick={() => navigate(`/accounting`)}>Accounting Dashboard</MenuItem>}
-            {StateManager.isUserAllowed("dmv-dashboard") && <MenuItem onClick={() => navigate(`/dmv-dashboard`)}>DMV Dashboard</MenuItem>}
-            {StateManager.isUserAllowed("mechanic-summary") && <MenuItem onClick={() => navigate(`/mechanic-summary/${moment().format("YYYY-MM-DD")}/${moment().subtract(2, "weeks").format("YYYY-MM-DD")}`)}>Mechanic Summary</MenuItem>}
-            {StateManager.isUserAllowed("payroll") && <MenuItem onClick={() => navigate(`/payroll/${moment().format("YYYY-MM-DD")}`)}>Payroll Dashboard</MenuItem>}
-            {StateManager.isUserAllowed("leads") && <MenuItem onClick={() => navigate(`/leads`)}>Leads</MenuItem>}
-            {StateManager.isUserAllowed("credit-apps") && <MenuItem onClick={() => navigate(`/credit-apps`)}>Credit Apps</MenuItem>}
-            {/* {StateManager.isUserAllowed("backoffice") && <MenuItem onClick={() => navigate(`/backoffice`)}>Back Office</MenuItem>} */}
-            {/* {StateManager.isUserAllowed("purchase_orders") && <MenuItem onClick={() => navigate(`/payroll/${moment().format("YYYY-MM-DD")}`)}>Payroll Dashboard</MenuItem>} */}
-            {/* <MenuItem onClick={() => navigate(`/purchase_orders`)}>Purchase Orders</MenuItem> */}
-            {/* <MenuItem onClick={gotoTimesheets}>Timesheets</MenuItem> */}
-            {StateManager.isUserAllowed("add-car") && <MenuItem onClick={addCar}>Add Car</MenuItem>}
-            {StateManager.isUserAllowed("make-service") && StateManager.isAdmin() && <MenuItem onClick={addSO}>Make Service Order</MenuItem>}
-            {StateManager.isUserAllowed("inventory") && <MenuItem onClick={() => navigate(`/inventory`)}>inventory</MenuItem>}
-            {/* {StateManager.isUserAllowed("make-shipping") && <MenuItem onClick={makeShippingInvoice}>Make Shipping Invoice</MenuItem>} */}
-            {<MenuItem onClick={addInvoice}>Add Invoice</MenuItem>}
-            {/* <MenuItem onClick={addInvoice}>Add Unpaid Bill</MenuItem>
-            <MenuItem onClick={addRepair}>Add Repair</MenuItem>
-            
-            <MenuItem onClick={addExpense}>Add Paid Expense</MenuItem>
-            <MenuItem onClick={addLead}>Add Task</MenuItem> */}
-            <MenuItem onClick={signOut}>Sign Out</MenuItem>
+            <MenuItem 
+              className={classes.homeMenuItem}
+              onClick={() => navigate('/')}
+            >
+              <ListItemIcon className={classes.menuItemIcon}>
+                <DashboardIcon />
+              </ListItemIcon>
+              <ListItemText primary="Home" />
+            </MenuItem>
+
+            {renderMenuSections(StateManager, navigate, handleAction, classes)}
           </Menu>
         </Toolbar>
         <ResultsList results={results} selected={selected}/>
       </AppBar>
       <div className={classes.appBarSpacer} />
+
+      <AddCarDialog 
+        open={isAddCarDialogOpen}
+        onClose={() => setIsAddCarDialogOpen(false)}
+      />
+
+      <AddServiceOrderDialog
+        open={isAddServiceOrderDialogOpen}
+        onClose={() => setIsAddServiceOrderDialogOpen(false)}
+      />
     </>;
   }
 
@@ -287,6 +330,61 @@ export default function Header(props) {
       flexGrow: 1,
     },
     appBarSpacer: theme.mixins.toolbar,
+    menuPaper: {
+      width: 320,
+      maxHeight: 'calc(100vh - 100px)',
+      overflowY: 'auto',
+      '&::-webkit-scrollbar': {
+        width: '8px',
+      },
+      '&::-webkit-scrollbar-track': {
+        background: '#f1f1f1',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: '#888',
+        borderRadius: '4px',
+      },
+    },
+    menuSection: {
+      padding: theme.spacing(1, 0),
+    },
+    menuSectionTitle: {
+      padding: theme.spacing(1, 2),
+      color: theme.palette.text.secondary,
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      fontSize: '0.875rem',
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      backgroundColor: theme.palette.action.hover,
+    },
+    menuItem: {
+      padding: theme.spacing(1, 2),
+      minHeight: 48,
+      '&:hover': {
+        backgroundColor: theme.palette.action.hover,
+      },
+    },
+    menuItemIcon: {
+      minWidth: 40,
+      color: 'inherit',
+    },
+    menuItemText: {
+      fontSize: '0.875rem',
+    },
+    divider: {
+      margin: theme.spacing(1, 0),
+    },
+    homeMenuItem: {
+      padding: theme.spacing(1.5, 2),
+      backgroundColor: theme.palette.primary.main,
+      color: theme.palette.primary.contrastText,
+      '&:hover': {
+        backgroundColor: theme.palette.primary.dark,
+      },
+    },
   }));
 
   const getLabel = (hit, type) => {

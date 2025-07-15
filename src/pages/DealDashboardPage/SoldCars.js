@@ -1,10 +1,12 @@
 import React from 'react';
 import Grid from '@mui/material/Grid';
 import SimpleTable from '../../components/SimpleTable';
+import moment from 'moment/moment';
 
 
 export default function SoldCars(props) {
-  let { rows, } = props;
+  let { rows } = props;
+  rows = rows.sort((a, b) => moment(a.date).diff(moment(b.date)));
 
   const tableData = {
     rows,

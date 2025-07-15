@@ -24,6 +24,7 @@ export default function Settings(props) {
     'pilotBalance',
     'clearingBalance',
     "seacoastLOCBalance",
+    "prepaidAssets",
   ];
 
   let initValues = {};

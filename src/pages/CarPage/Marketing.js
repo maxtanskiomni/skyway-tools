@@ -1,31 +1,7 @@
 import React from 'react';
-import makeStyles from '@mui/styles/makeStyles';
-import CssBaseline from '@mui/material/CssBaseline';
-import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Container from '@mui/material/Container';
-import Grid from '@mui/material/Grid';
-import Link from '@mui/material/Link';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import Customers from './Customers.js';
-import DateSelector from './DateSelector.js';
-import Trades from './Trades';
-import Invoices from './Invoices.js';
-import ExpensesSummary from './ExpensesSummary.js';
-import ProfitSummary from './ProfitSummary.js';
-import DMVSummary from './DMVSummary.js';
-import FileBank from './FileBank.js';
-import Paperwork from './Paperwork.js';
-import SimpleTable from '../../components/SimpleTable';
-import Header from '../../components/Header';
 import firebase from '../../utilities/firebase';
-import { getFunctions, httpsCallable } from "firebase/functions";
-import history from '../../utilities/history';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Button from '@mui/material/Button';
 
 import Checkbox from '@mui/material/Checkbox';
@@ -33,18 +9,17 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import TextLine from '../../components/TextLine.js';
 import { StateManager } from '../../utilities/stateManager.js'
 
-import Preview from '../../components/Preview.js';
-import moment from 'moment';
-import Dropdown from '../../components/Dropdown.js';
-
 import UploadLine from '../../components/UploadLine.js';
 import { TextField } from '@mui/material';
 import NewFileLine from '../../components/NewFileLine.js';
 import algolia from '../../utilities/algolia.js';
 import RequestManager from '../../utilities/requestManager.js';
+import JSZip from 'jszip';
 
 export default function Marketing(props) {
   const { car = {} } = props;
+
+  const image_keys = ["thumbnail", "vin_image", "odometer_image", "stamping_images", "ext_images", "interior_images", "engine_images", "under_images"];
 
   const sections = {
     'cover': <PictureSection id="thumbnail" multiple={false} {...car}/>,
@@ -59,23 +34,57 @@ export default function Marketing(props) {
     // 'write-up': <WriteupSection {...car}/>,
   };
 
-  const refresh = async () => {
-    StateManager.setAlertAndOpen("Refreshing in background", "info");
-    const params = {
-      function: "refreshImages",
-      variables: {
-        stock: car.stock,
+  
+  const downloadAllImages = async () => {
+    StateManager.setAlertAndOpen("Preparing zip file...", "info");
+    const zip = new JSZip();
+    
+    // Create array of promises for all image downloads
+    const downloadPromises = image_keys.flatMap(key => {
+      let images = car[key];
+      if (!images) return [];
+      
+      // Convert single image to array
+      if (!Array.isArray(images)) {
+        images = [images];
       }
-    };
-    let response = await RequestManager.get(params);
-    StateManager.setAlertAndOpen("Pictures refreshed!");
-  }
+
+      // Create promise for each image
+      return images.map((imageUrl, index) => {
+        if (!imageUrl) return null;
+        
+        return fetch(imageUrl)
+          .then(response => response.blob())
+          .then(blob => {
+            zip.file(`${key}_${index}.jpg`, blob);
+          });
+      }).filter(p => p !== null); // Remove null promises
+    });
+
+    try {
+      // Wait for all images to be added to zip
+      await Promise.all(downloadPromises);
+      
+      // Generate and download zip file
+      const content = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(content);
+      link.download = "car_images.zip";
+      link.click();
+      window.URL.revokeObjectURL(link.href);
+      
+      StateManager.setAlertAndOpen("Download complete!", "success");
+    } catch (error) {
+      StateManager.setAlertAndOpen("Error creating zip file", "error");
+      console.error(error);
+    }
+  };
 
   return (
     <div style={{paddingBottom: 15}}>
       <>
-        <Button variant="contained" color="primary" onClick={refresh}>
-          Refresh DA Pictures
+        <Button variant="contained" color="primary" onClick={downloadAllImages}>
+          Download All Images
         </Button>
       </>
       {

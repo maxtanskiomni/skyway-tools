@@ -34,9 +34,12 @@ class Constants {
       'estimate',
       // "parts",
       "approval",
+      "parts",
+      "ready",
       // "purchasing",
       // "awaiting parts",
       "working",
+      "quality",
       "payment",
       "complete",
       // "deleted",
@@ -54,8 +57,8 @@ class Constants {
 
     this.service_statuses = [
       'pending',
-      "working",
-      "quality",
+      // "working",
+      // "quality",
       "complete",
     ];
 
@@ -103,6 +106,11 @@ class Constants {
     ]
     .sort();
 
+    this.approval_statuses = [
+      'pending',
+      'approved',
+    ]
+
     this.employees = [
       'Al',
       'Max',
@@ -149,7 +157,32 @@ class Constants {
       // {value: "MIA", label: "Miami"},
     ]
     .sort((a, b) => a.value.localeCompare(b.value));
-    this.locations.push({value: "SR", label: "Service"});
+    // this.locations.push({value: "SR", label: "Service"});
+
+    this.bodyStyles = [
+      "Cargo Van",
+      "Convertible",
+      "Coupe",
+      "Hatchback",
+      "Minivan",
+      "Passenger Van",
+      "SUV",
+      "Sedan",
+      "Truck",
+      "Wagon"
+    ];
+    
+    this.cylinderCounts = [3, 4, 5, 6, 8, 10, 12];
+    
+    this.drivetrains = [
+      "All-wheel Drive",
+      "Four-wheel Drive",
+      "Front-wheel Drive",
+      "Rear-wheel Drive",
+      "Unknown"
+    ];
+    
+    this.doorCounts = [2, 3, 4, 5, 6, 7, 8, 9, 10];
 
     this.userNames = {
       "QaTeMXR0TJcK9L80VTjBo60WpTt2": "Alan Tanski",
@@ -158,6 +191,7 @@ class Constants {
       "jaeuSSDch5cuGQztaD7RhZ3acv33": "Bobby Chestnut",
       "W597JhoCdAX26Xxe52BRQcn7hTP2": "Ryan Tanski",
       "FXbkDzwrCVeEda2g2bxPEJLfIFD2": "Augstin Ortiz",
+      "HwxpinJD5vgatCaQ3ntyNImPP282": "Mack Besser",
       // "ckFJCBv5bDXXZ4sD6umwmErwCqw1": "Alex Literal",
       "9uhA796j8ShEmIQjFSd7PFxsK4t2": "John Uciechowski",
       "2bnTRpNHBtYYFKE8M9RXFMIEG073": "Noah McKendree",
@@ -170,19 +204,27 @@ class Constants {
       "5HBSEpaDUOY8GIjbHg7KUInQ59I3": "Walter Lansing",
       "d4eMzjkJqPhUTdPL4zrHFUcvxM63": "Porters",
       "8zj1gUmxaxSUE7suolaqaQUHkmE2": "Sallie Suski",
+      "STEVEN_AIENA": "Steven Aiena",
+      "ROBERT_PANICO": "Robert Panico",
+      "ENRIQUE_ACOSTA": "Enrique Acosta",
     }
 
     this.mechanics = [
-      // {name: "Placeholder", rate: 35, cat:"INVR", id: "test"},
+      {name: "Placeholder", rate: 35, cat:"INVR", id: "test"},
       // {name: "Alex Literal", rate: 30, cat:"INVR", id: "ckFJCBv5bDXXZ4sD6umwmErwCqw1"},
-      {name: "Augstin Ortiz", rate: 40, cat:"INVR", id: "FXbkDzwrCVeEda2g2bxPEJLfIFD2"},
-      {name: "John Uciechowski", rate: 40, cat:"INVR", id: "9uhA796j8ShEmIQjFSd7PFxsK4t2"},
-      {name: "Mark Proveaux", rate: 35, cat:"INVR", id: "lwd7yHbNZGSFrB3h4f9504fhXyW2"},
-      {name: "Jayme Spencer", rate: 30, cat:"INVR", id: "q6OmXvcDOWdBv6lxs41MXpQRgfm1"},
+      {name: "Augstin Ortiz", rate: 42, cat:"INVR", id: "FXbkDzwrCVeEda2g2bxPEJLfIFD2"},
+      {name: "Mack Besser", rate: 40, cat:"INVR", id: "HwxpinJD5vgatCaQ3ntyNImPP282"},
+      {name: "Jovani Ortiz", rate: 25, cat:"INVR", id: "MOXC0qR6b8NSZYZ3Lw5oCQtkHj72"},
+      {name: "John Uciechowski", rate: 42, cat:"INVR", id: "9uhA796j8ShEmIQjFSd7PFxsK4t2"},
+      {name: "Steven Aiena", rate: 50, cat:"INVR", id: "STEVEN_AIENA"},
+      {name: "Robert Panico", rate: 50, cat:"INVR", id: "ROBERT_PANICO"},
+      {name: "Enrique Acosta", rate: 40, cat:"INVR", id: "ENRIQUE_ACOSTA"},
+      // {name: "Mark Proveaux", rate: 35, cat:"INVR", id: "lwd7yHbNZGSFrB3h4f9504fhXyW2"},
+      // {name: "Jayme Spencer", rate: 30, cat:"INVR", id: "q6OmXvcDOWdBv6lxs41MXpQRgfm1"},
       // {name: "Jhonner Caldera", rate: 40, cat:"INVR", id: "3"},
       // {name: "Noah McKendree", rate: 27, cat:"INVR", id: "2bnTRpNHBtYYFKE8M9RXFMIEG073"},
       // {name: "Karl Knueppel", rate: 25, cat:"INVR", id: "IqcX1N46dHdgxPDC6vbN4zT9g4q2"},
-      {name: "Walter Lansing", rate: 42, cat:"INVR", id: "5HBSEpaDUOY8GIjbHg7KUInQ59I3"},
+      // {name: "Walter Lansing", rate: 42, cat:"INVR", id: "5HBSEpaDUOY8GIjbHg7KUInQ59I3"},
       // {name: "Rob Powell", rate: 35, cat:"INVR", id: "TJxfGmhzuvU9riykprL04GI0V3w2"},
       // {name: "Joe Clouse", rate: 25, cat:"INVR", id: "h7HqTy9tMUNodcaNQ7yZPtHcJzq2"},
     ].sort((a,b) => a.name.split(" ").slice(-1) >= b.name.split(" ").slice(-1) ? 1 : -1);
@@ -199,19 +241,78 @@ class Constants {
     ].sort((a,b) => a.name.split(" ").slice(-1) >= b.name.split(" ").slice(-1) ? 1 : -1);
 
     this.mechanicNames = [
-      // "Placeholder",
+      "Placeholder",
       // "Alex Literal",
       "Augstin Ortiz",
+      "Enrique Acosta",
+      "Mack Besser",
+      "Jovani Ortiz",
       "John Uciechowski",
+      "Steven Aiena",
+      "Robert Panico",
       // "Jhonner Caldera",
       // "Noah McKendree",
       // "Karl Knueppel",
-      "Jayme Spencer",
+      // "Jayme Spencer",
       // "Rob Powell",
-      "Mark Proveaux",
+      // "Mark Proveaux",
       // "Joe Clouse",
       "Walter Lansing"
     ];
+
+    const superior_pricing = [
+      {
+        type: "Quick Wipe",
+        description: "Using detail spray wipe off entire car. Usually needed when in a rush for a showing or to knock the dust off a car",
+        cost: "$10"
+      },
+      {
+        type: "Full Detail",
+        description: "Full detail. Bumper to bumper. Wash exterior, wipe down interior, vacuum, clean all openings (hood, doors, trunk). Clean and wipe down engine and bay. Clean and vacuum trunk. Clean wheels. Shine tires. Clean glass. Done to all new arrivals before photos",
+        cost: "$100"
+      },
+      {
+        type: "Wash and Vac for Delivery or Showing",
+        description: "Wash or wipe down. Vacuumed interior. Wipe interior. Wipe all openings. Clean glass. Wipe engine and bay",
+        cost: "$25"
+      },
+      {
+        type: "Al Special",
+        description: "Full detail PLUS other items AI wants addressed. Examples include some under hood paint, paint repair, interior paint, spot polish, etc.",
+        cost: "Negotiate"
+      },
+      {
+        type: "1-Step Polish",
+        description: "Using DA polish entire car. Mask off plastics",
+        cost: "$100"
+      },
+      {
+        type: "2-Step Polish",
+        description: "Using a DA cut and polish entire car. Mask off plastics",
+        cost: "$200"
+      },
+      {
+        type: "Underside Paint",
+        description: "Clean and paint underside of car",
+        cost: "$50"
+      },
+      {
+        type: "Trunk Rust Repair",
+        description: "Wire wheel rust, fill any holes and paint trunk",
+        cost: "$50"
+      },
+      {
+        type: "Other",
+        description: "Other items that do not come up on a regular basis",
+        cost: "Negotiate"
+      }
+    ]
+
+
+    this.vendors = [
+      {name: "Superior Auto Detailing", type: "detail", pricing: superior_pricing},
+      {name: "Duddy", type: "detail", pricing: []},
+    ]
 
   }
 

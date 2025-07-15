@@ -151,6 +151,7 @@ export default function Customers(props) {
               onKeyDown={keyPress}
               onBlur={onBlur}
               disabled={props.disabled}
+              autoComplete="off"
           />
           <div style={{position: "absolute", zIndex: 10000}}>
             <ResultsList results={results} selected={selected} removeIcon forceHeight capWidth/>

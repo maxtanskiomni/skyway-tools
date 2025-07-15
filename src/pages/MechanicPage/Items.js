@@ -25,9 +25,22 @@ import moment from 'moment';
 
 
 const headers = {
-  services: [ 
+  pending: [ 
     {key:'isComplete', label:'Complete', noLink:true}, 
+    {key:'isApproved', label:'Approved', noLink:true}, 
     {key:'priority', label:'Priority'}, 
+    {key:'order', label:'Order'}, 
+    {key:'writer', label:'Writer'}, 
+    {key:'name', label:'Service'}, 
+    {key:'carTitle', label:'Car'}, 
+    {key:'mechanicName', label:'Mechanic'},
+    {key:'time', label:'Hours'}, 
+    {key:'cost', label:'Pay', format:'usd'},
+    // {key:'actions', label:'Actions', noLink:true}
+  ],
+  complete: [ 
+    {key:'isComplete', label:'Complete', noLink:true}, 
+    {key:'isApproved', label:'Approved', noLink:true}, 
     {key:'status_time', label:'Date Finished'}, 
     {key:'order', label:'Order'}, 
     {key:'writer', label:'Writer'}, 
@@ -41,18 +54,18 @@ const headers = {
 };
 
 const tables = {
-  services: "services",
+  pending: "services",
+  complete: "services",
 };
 
 export default function Transactions(props) {
-  const { items = [], stockNumber, type = "services", checkLimit = 1, disabled = false, showSummary, group = "",  disableItems = false } = props;
+  const { items = [], stockNumber, type = "pending", checkLimit = 1, disabled = false, showSummary, group = "" } = props;
   const [transactions, setTransactions] = React.useState(items)
 
   const rows = transactions.map(transaction => {
-    return makeObject(transaction, type, {transactions, setTransactions, stockNumber, disableItems});
+    return makeObject(transaction, type, {transactions, setTransactions, stockNumber});
   })
   .sort(function(a,b){
-    console.log(new Date(a.status_time || '1/1/2021') - new Date(b.status_time || '1/1/2021'))
     return new Date(a.status_time || '1/1/2021') - new Date(b.status_time || '1/1/2021');
     })
   ;
@@ -77,7 +90,7 @@ export default function Transactions(props) {
   return (
     <Grid container spacing={3}>
       <Grid item xs={12}>
-        <SimpleTable {...tableData} linkLocation="_self" sorted/>
+        <SimpleTable {...tableData} linkLocation="_self" sorted summaryTop/>
       </Grid>
     </Grid>
   );
@@ -85,10 +98,13 @@ export default function Transactions(props) {
 
 const makeObject = (transaction, type, params = {}) => {
 
+  const disabled = !StateManager.isManager() && (transaction.approval !== "approved" || transaction.status === "complete")
+
   return {
     ...transaction,
     priority: transaction.priority || 0,
-    isComplete:  ToggleIndicator(transaction.status === constants.service_statuses.at(-1), {type, id: transaction.id, disabled: params.disableItems}),
+    isComplete:  ToggleIndicator(transaction.status === constants.service_statuses.at(-1), {checkType: "status", type, id: transaction.id, disabled}),
+    isApproved:  ToggleIndicator(transaction.approval === "approved", {checkType: "approval", type, id: transaction.id, disabled: !StateManager.isManager()}),
     mechanicName:  transaction.mechanic,
     rowLink: `/service/${transaction.id}`,
     orderLink: `/service-order/${transaction.order}`,
@@ -106,15 +122,24 @@ const ToggleIndicator = (isEnabled, params) => {
     const newChecked = !checked;
     setChecked(newChecked);
 
-    const status = constants.service_statuses.at(!!checked ? 0 : -1);
-    const status_time = !!checked ? null : moment().format("YYYY/MM/DD");
-    await firebase.firestore().collection(tables[params.type]).doc(params.id).update({status, status_time});
+    if(params.checkType === "status") {
+      const status = constants.service_statuses.at(!!checked ? 0 : -1);
+      const status_time = !!checked ? null : moment().format("YYYY/MM/DD");
+      await firebase.firestore().collection(tables[params.type]).doc(params.id).update({status, status_time});
+
+    } else if(params.checkType === "approval") {
+      const approval = !!checked ? "pending" : "approved";
+      const approval_time = !!checked ? null : moment().format("YYYY/MM/DD"); 
+      await firebase.firestore().collection(tables[params.type]).doc(params.id).update({approval, approval_time});
+
+    }
+
   }
 
   return (
     <IconButton
       aria-label="add-link"
-      color="error"
+      color="secondary"
       onClick={toggleChecked}
       disabled={params.disabled}
       size="large">

@@ -26,7 +26,7 @@ import moment from 'moment';
 
 const headers = {
   services: [ 
-    {key:'name', label:'Car'}, 
+    {key:'name', label:'Customer'}, 
     {key:'contact', label:'Contact Methods'}, 
     {key:'time', label:'Time Submitted'}, 
     {key:'license', label:'License', noLink: true}, 

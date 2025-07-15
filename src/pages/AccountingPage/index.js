@@ -86,7 +86,7 @@ export default function AcountingPage(props) {
           setData({...new_data});
         })
 
-      //Check data
+      //Deposits data
       db.collection('deposits')
         .where('date', '>=', moment().subtract(6, "months").format("YYYY/MM/DD"))
         .get()
@@ -102,8 +102,18 @@ export default function AcountingPage(props) {
           });
           await Promise.all(cars);
 
-
           new_data.deposits_loaded = true;
+          setData({...new_data});
+        })
+
+      //Consignor cars data
+      db.collection('cars')
+        .where('consignor', '==', '4ed13115-1900-41d2-a14d-13f1242dd48a')
+        .where('status', 'not-in', ['terminated', 'sold'])
+        .get()
+        .then(consignorSnapshot => {
+          new_data.ron_cars = consignorSnapshot.docs.map(getDocData);
+          new_data.ron_cars_loaded = true;
           setData({...new_data});
         })
 
@@ -117,8 +127,18 @@ export default function AcountingPage(props) {
           const inventoryPromises = new_data.inventory.map(async car => {
             const payableSnap = await db.collection('purchases').where('stock', '==', car.id).get();
             const value = payableSnap.docs.map(doc => doc.data())
-                                          .filter(x => !x.isPayable)
+                                          .filter(x => !x.isPayable && !["service", "shipping_in", "shipping"].includes(x.type))
                                           .reduce((a,c) => a + c.amount, 0);
+
+            // Get consignor info
+            if (car.consignor) {
+              const ownerSnap = await db.collection('customers').doc(car.consignor).get();
+              const ownerData = ownerSnap.data();
+              if (ownerData) {
+                car.owner = `${ownerData.first_name || ''} ${ownerData.last_name || ''}`.trim();
+              }
+            }
+
             car.value = value;
             car.title = `${car.year || ""} ${car.make || ""} ${car.model || ""}`;
             car.market_price = car.pricing?.excellent || "-";
@@ -185,8 +205,8 @@ export default function AcountingPage(props) {
       //Payable data
       const payableSnapshot = await db.collection('purchases').where('isPayable', '==', true).get();
       new_data.payables = payableSnapshot.docs.map(getDocData).filter(x => !["Skyway Classics"].includes(x.vendor));
-      const getIssNTO = x => (x.id || "").includes("NTO") || (x.memo || "").includes("NTO")
-      new_data.payables = new_data.payables.map(x => ({...x, isNTO: getIssNTO(x)}));
+      const getIsNTO = x => (x.id || "").includes("NTO") || (x.memo || "").includes("NTO")
+      new_data.payables = new_data.payables.map(x => ({...x, isNTO: getIsNTO(x)}));
 
       const payablePromises =  new_data.payables.map(async payable => {
         if(!!payable.stock){
@@ -255,7 +275,7 @@ export default function AcountingPage(props) {
   }, [reload]);
 
   let sections = {
-    'summary': {component: <Summary data={data} />, condition: data.summary_loaded && data.payables_loaded && data.orders_loaded},
+    'summary': {component: <Summary data={data} />, condition: data.summary_loaded && data.payables_loaded && data.orders_loaded && data.ron_cars_loaded},
     'deposits': {component: <Deposits data={data} />, condition: data.deposits_loaded},
     // 'recievables': (i) => <Recievables />,
     'payables': {component: <Payables data={data} />, condition: data.payables_loaded},
@@ -287,7 +307,7 @@ export default function AcountingPage(props) {
   return (
     <>
       <Tabs defaultIndex={defaultIndex} onSelect={updateURL}>
-        <TabList>
+        <TabList className="no-print">
           { Object.keys(sections).map((section, i) => <Tab>{formatTitle(section)}</Tab>) }
         </TabList>
         { Object.values(sections).map((panel, i) => <TabPanel>{panel.condition ? panel.component : <Loading />}</TabPanel>) }

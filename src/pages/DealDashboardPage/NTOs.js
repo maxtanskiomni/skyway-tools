@@ -2,11 +2,11 @@ import React from 'react';
 import Grid from '@mui/material/Grid';
 import SimpleTable from '../../components/SimpleTable';
 import { StateManager } from '../../utilities/stateManager';
-
+import moment from 'moment/moment';
 
 export default function Deals(props) {
   let { rows, filter = () => null } = props;
-  rows = rows.filter(filter);
+  rows = rows.filter(filter).sort((a, b) => moment(a.date).diff(moment(b.date)));;
   console.log("here", rows)
 
 

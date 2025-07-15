@@ -7,7 +7,7 @@ import moment from 'moment';
 
 export default function Shipping(props) {
   let { rows, filter = () => true } = props;
-  rows = rows.filter(filter);
+  rows = rows.filter(filter).sort((a, b) => moment(a.date).diff(moment(b.date)));;
 
   const binaryIndicator = (isEnabled) => (
     isEnabled ? <CheckBox /> : <CheckBoxOutlineBlank />

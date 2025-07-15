@@ -17,6 +17,7 @@ import Files from './Files.js';
 import Title from './Title.js';
 import Leads from './Leads.js';
 import Marketing from './Marketing.js';
+import Facebook from './Facebook.js';
 import CarSummary from './CarSummary.js';
 import Service from './Service.js';
 import Finance from './Finance.js';
@@ -50,6 +51,7 @@ import { StateManager } from '../../utilities/stateManager.js';
 import algolia from '../../utilities/algolia';
 import Transactions from './Transactions.js';
 import Writeup from './Writeup.js';
+import { setPageMeta, resetPageMeta } from '../../utilities/metaManager';
 
 const tab = new URL(window.location.href).searchParams.get("tab");
 
@@ -59,6 +61,60 @@ export default function CarPage(props) {
   StateManager.setCar = setCar;
   StateManager.updateCar = data => setCar({...car, ...data});
   // StateManager.setTitle(`${stockNumber}`);
+
+  // Store the default apple touch icon path
+  const defaultAppleTouchIcon = '/logo.png';  // Points to your default logo in the public folder
+  const defaultOGImage = '/logo.png';  // Default OpenGraph image
+  
+  // Utility function to set or update link elements and meta tags
+  const updateLinkOrMeta = (selector, attr, value, tagType = 'link', relOrProperty = '') => {
+    let element = document.querySelector(selector);
+    
+    if (!element) {
+      element = document.createElement(tagType);
+      if (tagType === 'link') {
+        element.rel = relOrProperty;  // Set 'rel' for link tag
+      } else if (tagType === 'meta') {
+        element.setAttribute('property', relOrProperty);  // Set 'property' for meta tag
+      }
+      document.head.appendChild(element);
+    }
+    
+    element.setAttribute(attr, value);  // Set the specified attribute (href or content)
+  };
+  
+  React.useEffect(() => {
+    console.log(car.thumbnail);
+  
+    if (car.thumbnail) {
+      // Update Apple Touch Icon
+      updateLinkOrMeta("link[rel~='apple-touch-icon']", 'href', car.thumbnail, 'link', 'apple-touch-icon');
+  
+      // Update OpenGraph og:image
+      updateLinkOrMeta("meta[property='og:image']", 'content', car.thumbnail, 'meta', 'og:image');
+    }
+  
+    return () => {
+      // Reset Apple Touch Icon to default
+      updateLinkOrMeta("link[rel~='apple-touch-icon']", 'href', defaultAppleTouchIcon, 'link', 'apple-touch-icon');
+  
+      // Reset OpenGraph og:image to default
+      updateLinkOrMeta("meta[property='og:image']", 'content', defaultOGImage, 'meta', 'og:image');
+    };
+  }, [car.thumbnail]);  // Trigger whenever car.thumbnail changes
+  
+
+
+  React.useEffect(() => {
+    if (car.thumbnail) {
+      setPageMeta(car.thumbnail, `${car.stock} ${car.year} ${car.make} ${car.model}`);
+    }
+    return () => {
+      resetPageMeta();
+    };
+  }, [car.thumbnail, car.year, car.make, car.model]);
+  
+
 
   React.useEffect(() => {
     async function fetchData(input = {}) {
@@ -219,9 +275,10 @@ export default function CarPage(props) {
   const tabs = {
     'summary':  {component: <CarSummary car={car} updater={setCar}/>, condition: car.car_loaded},
     'Checkin':  {component: <Checkin car={car} updater={setCar}/>, condition: car.inspection_loaded},
-    'inspection':  {component: <Inspection car={car} updater={setCar}/>, condition: car.inspection_loaded},
-    'service':  {component: <Service orders={car.orders} stockNumber={stockNumber} thumbnail={car.thumbnail} />, condition: car.car_loaded && car.orders_loaded},
+    'inspection':  {component: <Inspection car={car} updater={setCar}/>, condition: car.inspection_loaded && car.orders_loaded},
+    'service':  {component: <Service orders={car.orders} stockNumber={stockNumber} thumbnail={car.thumbnail} car={car} />, condition: car.car_loaded && car.orders_loaded},
     'marketing': {component: <Marketing car={car}/>, condition: car.car_loaded}, 
+    'facebook': {component: <Facebook car={car}/>, condition: car.car_loaded}, 
     'writeup': {component: <Writeup car={car}/>, condition: car.car_loaded}, 
     'consignment':   {component: <Consignor car={car}/>, condition: car.consignor_loaded},
     'leads':  {component: <Leads {...car} />, condition: car.leads_loaded},

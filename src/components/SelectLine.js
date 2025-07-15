@@ -8,7 +8,7 @@ import { StateManager } from '../utilities/stateManager';
 
 export default function SelectLine(props) {
   let {data={}, id="", selections=[]} = props;
-  if(typeof data[id] === "object") data[id] = data[id].key;
+  if(typeof data[id] === "object" && data[id] != null) data[id] = data[id].key;
   const defaultValue = data[id] || "";
   const [value, setValue] = React.useState(defaultValue);
   // const initSelections = [{value:"", label:"None"}];

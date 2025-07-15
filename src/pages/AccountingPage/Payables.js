@@ -12,7 +12,7 @@ import { StateManager } from '../../utilities/stateManager';
 import RequestManager from '../../utilities/requestManager';
 
 const headers = [
-  {key:'date', label:'Date'},
+  {key:'date', label:'Date', format:'date'},
   {key:'vendor', label:'Vendor'}, 
   {key:'car', label:'Car'},
   {key:'memo', label:'Memo'}, 
@@ -32,7 +32,7 @@ export default function Payables(props) {
   StateManager.removeFromLoading = id => setLoading(loading.filter(x => ![id].flat().includes(x)));
   StateManager.addToHide = id => setHide(hide.concat(id).flat());
   StateManager.removeFromHide = id => setHide(hide.filter(x => ![id].flat().includes(x)));
-  // console.log(payables.map(payable => payable.stock))
+  // console.log(payables.map(payable => [payable.stock, payable.amount]))
 
   let rows = payables.map(payable => {
 
@@ -41,7 +41,11 @@ export default function Payables(props) {
                             .map(key => `${key}=${payable[key]}`).join("&");
     const tab = new URL(window.location.href).searchParams.get("tab");
 
-    const depDates =(payable.deposits || []).map(doc => doc.date || 0).slice(-1);
+    const depDates = (payable.deposits || [])
+      .map(doc => moment(doc.date || 0))  // Convert dates to moment objects
+      .sort((a, b) => a - b)              // Sort dates in ascending order
+      .slice(-1);    
+      
     let relevantDate = payable.date;
     if(depDates.length > 0) relevantDate = moment(relevantDate).isSameOrBefore(depDates[0]) ? depDates[0] : relevantDate;
 
@@ -56,11 +60,16 @@ export default function Payables(props) {
 
   rows = rows.filter(data => {
     return !data.isNTO || data.isFunded;
-  }).filter(x => defaultFilter(x,term))
+  })
+  .filter(x => defaultFilter(x,term))
+  .sort((a, b) => moment(a.date).valueOf() - moment(b.date).valueOf());
 
-  console.log(rows)
+  // console.log(rows)
 
-  const summary = {format: 'usd', label: 'Total', value: rows.reduce((a,c) => a + c.amount, 0)};
+  
+  const summary = {format: 'usd', label: 'Total', value: rows.reduce((a,c) => a + (
+    typeof c.amount === 'string' ? parseFloat(c.amount) || 0 : c.amount || 0
+  ), 0)};
 
   const tableData = {
     rows: rows.filter(x => !hide.includes(x.id)),
@@ -115,12 +124,6 @@ const deleteRow = async (id) => {
     await firebase.firestore().collection('purchases').doc(id).delete();
     StateManager.updateData();
   }
-}
-
-const markDone = async (id) => {
-  StateManager.setLoading(true);
-  await firebase.firestore().collection('purchases').doc(id).update({isPayable: false, paidDate: moment().format("YYYY/MM/DD")});
-  StateManager.updateData();
 }
 
 const writeCheck = async (payable) => {
@@ -248,8 +251,4 @@ const markPaid = async (payables) => {
   StateManager.addToHide(ids);
 
   StateManager.setPrint(false);
-}
-
-function timeout(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }

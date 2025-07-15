@@ -52,7 +52,7 @@ export default function PartForm(props) {
         'vendor': () => <TextLine id={'vendor'} label='Vendor' data={data} updater={updater} placeholder="Vendor" />,
         'partNumber': () => <TextLine id={'partNumber'} label='Part Number' data={data} updater={updater} placeholder="Part Number" />,
         'link': () => <TextLine id={'link'} label='Part Link' data={data} updater={updater} placeholder="Part Link" />,
-        'order_date': () => <DateLine id={'orderDate'} label={'Order Date'} data={data} updater={dateUpdate} minDate drop_is/>,
+        'order_date': () => <DateLine id={'orderDate'} label={'Order Date'} data={data} updater={dateUpdate} minDate={!StateManager.isBackoffice} drop_is/>,
         'arrival_date': () => <DateLine id={'arrivalDate'} label={'Est Arrival Date'} data={data} updater={dateUpdate} minDate drop_is/>,
         "status": () => <SelectLine id={'status'} label={'Status'} selections={constants.makeSelects("part_statuses")} data={data} updater={statusUpdater} />,
         "location": () => <SelectLine id={'location'} label={'Location'} selections={constants.makeSelects("part_locations")} data={data} updater={updater} />,

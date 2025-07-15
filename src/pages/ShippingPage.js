@@ -20,7 +20,7 @@ const VendorForm = () => {
 
   const validateCarLoad = (carLoad) => {
     if (!carLoad.trim()) return "Car load cannot be empty.";
-    if (!isValidStockNumberList(carLoad.trim())) return "Car load must be a list of stock numbers (ex: 1247-FL, 3850-FL)";
+    if (!isValidStockNumberList(carLoad.trim())) return "Car load must be a list of stock numbers (ex: SN1234, 1247-FL, 3850-FL)";
     return "";
   };
 
@@ -218,13 +218,13 @@ export default VendorForm;
 function isValidStockNumberList(text) {
   text = text.trim();
   text = text.replace(/,\s*|\s+/g, ',');
-  const pattern = /^(?:\d+-(F|f)(L|l))(?:,\d+-(F|f)(L|l))*$/;
+  const pattern = /^(?:SN\d+|[0-9]+-[A-Za-z]{0,3})(?:,(?:SN\d+|[0-9]+-[A-Za-z]{0,3}))*$/;
   return pattern.test(text);
 }
 
 function extractStockNumbers(text) {
   text = text.toUpperCase().replace(/,\s*|\s+/g, ',');
-  const pattern = /\b\d+-FL\b/g;
+  const pattern = /\b(?:SN\d+|\w+-[A-Za-z]{0,3})\b/g;
   const matches = text.match(pattern);
   return matches || [];
 }

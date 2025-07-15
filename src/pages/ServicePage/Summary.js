@@ -38,8 +38,8 @@ export default function Summary(props) {
     }
 
     const dateUpdate = async (id, date) => {
-        let update = {[id]: !date ? "" : moment(date).format('YYYY-MM-DD')}
-        await firebase.firestore().doc('orders/'+stockNumber).set(update, {merge:true});
+        let update = {[id]: !date ? "" : moment(date).format('YYYY/MM/DD')}
+        await firebase.firestore().doc('services/'+data.id).set(update, {merge:true});
         updateSource("deal", id, date);
     }
 
@@ -53,6 +53,9 @@ export default function Summary(props) {
         update.mechanicID = settings.id || "";
         update.rate = settings.rate || "";
         update.cost = (update.rate || 0) * data.time;
+        if (value) {
+            update.assignDate = moment().format("YYYY/MM/DD");
+        }
         firebase.firestore().doc('services/'+data.id).set(update, {merge: true});
     }
 
@@ -67,6 +70,11 @@ export default function Summary(props) {
       firebase.firestore().doc('services/'+data.id).set(update, {merge: true});
     }
 
+    const approveUpdater = (id, value) => {
+      const update = {approval: value, approval_time: moment().format("YYYY/MM/DD")};
+      firebase.firestore().doc('services/'+data.id).set(update, {merge: true});
+    }
+
     const deleteService = async () => {
       if (window.confirm("Are you sure you want to delete this?")) {
         StateManager.setLoading(true);
@@ -77,12 +85,15 @@ export default function Summary(props) {
     }
 
     const sections = {
-        'date': () => <DateLine id={'date'} label={'Creation Date'} data={data} updater={dateUpdate} minDate drop_is/>,
+        'date': () => <DateLine id={'date'} label={'Creation Date'} data={data} updater={dateUpdate} drop_is/>, //minDate
         'service': () => <TextLine id={'name'} label='Service' data={data} updater={updater} placeholder="Service Name" drop_is />,
         'order': () => <TextLine id={'id'} label='Order' data={order} updater={orderUpdater} placeholder="SO Number" disabled={!StateManager.isBackoffice()} drop_is />,
         "mechanic": () => <SelectLine id={'mechanic'} label={'Mechanic'} selections={constants.makeSelects("mechanicNames")} disabled={!StateManager.isBackoffice()} data={data} updater={mechUpdater} />,
-        'priority': () => <TextLine id={'priority'} label='Priority' data={data} updater={updater} placeholder="Priority" type="number" drop_is />,
-        "status": () => <SelectLine id={'status'} label={'Status'} selections={constants.makeSelects("service_statuses")} data={data} updater={statusUpdater} />,
+        'assignDate': () => <DateLine id={'assignDate'} label={'Assign Date'} data={data} updater={dateUpdate} minDate drop_is disabled/>,
+        'priority': () => <TextLine id={'priority'} label={'Priority'} data={data} updater={updater} placeholder="Priority" type="number" drop_is />,
+        "approval": () => <SelectLine id={'approval'} label={'Approval'} selections={constants.makeSelects("approval_statuses")} data={data} updater={approveUpdater} disabled={!StateManager.isManager()} />,
+        "status": () => <SelectLine id={'status'} label={'Status'} selections={constants.makeSelects("service_statuses")} data={data} updater={statusUpdater} disabled={!StateManager.isManager() && (data.approval !== "approved" || data.status === "complete")} />,
+        'status_time': () => <DateLine id={'status_time'} label={'Status Date'} data={data} updater={dateUpdate} drop_is/>, //minDate
         'time': () => <TextLine id={'time'} label='Hours' data={data} updater={timeUpdater} placeholder="Service Hours" type="number" disabled={!StateManager.isBackoffice()} drop_is />,
     };
 

@@ -61,7 +61,7 @@ export default function ServicePipeline(props) {
       partList = await Promise.all(orderPromises);
       partList = partList.filter(item => {
         const {order = {}} = item;
-        return ["working", "payment", "complete"].includes(order.status) && !item.returnComplete;
+        return ["parts", "ready", "working", "payment", "complete"].includes(order.status) && !item.returnComplete;
       })
 
 

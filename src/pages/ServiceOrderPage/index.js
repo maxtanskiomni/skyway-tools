@@ -15,6 +15,7 @@ import { StateManager } from '../../utilities/stateManager.js';
 import algolia from '../../utilities/algolia';
 import Items from './Items.js';
 import constants from '../../utilities/constants.js';
+import Invoice from './Invoice.js';
 
 const tab = new URL(window.location.href).searchParams.get("tab");
 
@@ -23,6 +24,7 @@ export default function ServiceOrderPage(props) {
   const [order, setOrder] = React.useState({});
   StateManager.setOrder = setOrder;
   StateManager.updateCar = data => setOrder({...order, ...data});
+  StateManager.updateOrder = data => setOrder({...order, ...data});
   StateManager.setTitle(`${stockNumber}`);
 
   React.useEffect(() => {
@@ -102,7 +104,6 @@ export default function ServiceOrderPage(props) {
         db.collection('deposits').where('stock', '==', stockNumber).get()
         .then((transactionSnapshot) => {
           data.deposits = transactionSnapshot.docs.map(getDocData).filter(x => x.type === "service");
-          console.log(data.deposits);
           data.deposits_loaded = true;
           setOrder({...data});
         });
@@ -123,9 +124,11 @@ export default function ServiceOrderPage(props) {
           });
 
       } else {
-        setOrder({stock: stockNumber, updater: setOrder});
-        firebase.firestore().doc('orders/'+stockNumber).set({stock: stockNumber}, {merge: true});
-        await algolia.createRecord("orders", {objectID: stockNumber, ...{stock: stockNumber}})
+        // setOrder({stock: stockNumber, updater: setOrder});
+        // firebase.firestore().doc('orders/'+stockNumber).set({stock: stockNumber}, {merge: true});
+        // await algolia.createRecord("orders", {objectID: stockNumber, ...{stock: stockNumber}})
+        StateManager.setAlertAndOpen('Service order not found', 'error');
+        history.push('/');
       }
     }
     fetchData();
@@ -135,6 +138,7 @@ export default function ServiceOrderPage(props) {
 
   const tabs = {
     'summary':  {component: <Summary order={order} updater={setOrder} disabled={order.disabled} />, condition: order.order_loaded && order.customer_loaded && order.expenses_loaded && order.car_loaded && order.deposits_loaded},
+    'invoice': { component: <Invoice order={order} />, condition: order.services_loaded && order.parts_loaded && order.customer_loaded },
     // 'inspection':  {component: <Inspection car={order} updater={setOrder}/>, condition: order.inspection_loaded},
     'services':  {component: <Items items={order.services} stockNumber={stockNumber} type="services" disabled={order.disabled} showSummary/>, condition: order.services_loaded},
     'parts':  {component: <Items items={order.parts} stockNumber={stockNumber} type="parts" disabled={order.disabled} showSummary />, condition: order.parts_loaded},

@@ -53,8 +53,10 @@ export default function ServicePipeline(props) {
 
       const carPromises = orderList.map(async x => {
         if(x.car){
-          let cust = await db.doc('cars/'+x.car).get();
-          x.carTitle = cust.exists ? `${cust.data().stock} ${cust.data().year} ${cust.data().model}` : "";
+          let car = await db.doc('cars/'+x.car).get();
+          x.carTitle = car.exists ? `${car.data().stock} ${car.data().year} ${car.data().make} ${car.data().model}` : "";
+          x.score = Math.round(car.data().score || 0);
+          x.thumbnail = car.data().thumbnail || "";
         }
       });
 

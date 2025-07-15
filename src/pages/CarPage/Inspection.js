@@ -59,6 +59,8 @@ export default function Inspection(props) {
       if(id == "interior-material") table="cars";
       // return console.log(table, {[id]: value});
       updater(table, {[id]: value, needsDAUpdate: true});
+      
+      // if(id.endsWith('-notes')) StateManager.updateCar(car.inspection = {...car.inspection, [id]: value});
     }
 
     const fields = [
@@ -73,31 +75,72 @@ export default function Inspection(props) {
       // "has-power-steering",
       // "has-air-conditioning",
       // "inspection-date",
-    ]
+    ];
 
-    const makeOrder = async () => {
+
+    const makeNewOrder = async () => {
+      // const counters = await firebase.firestore().doc('admin/counters').get();
+      // const new_stock = counters.data().lastOrder + 1;
+  
+      // const customer = car?.consignor?.id === "4ed13115-1900-41d2-a14d-13f1242dd48a" ? "9c0d88f5-84f9-454d-833d-a8ced9adad49" : car?.consignor?.id || "9c0d88f5-84f9-454d-833d-a8ced9adad49";
+      
+      // await firebase.firestore().doc('orders/'+`SO${new_stock}`).set({
+      //   status: "estimate", //constants.service_statuses[0],
+      //   customer,
+      //   date: moment().format('YYYY/MM/DD'),
+      //   status_time: moment().format('YYYY/MM/DD'),
+      //   stock: `SO${new_stock}`,
+      //   car: stockNumber,
+      //   thumbnail: thumbnail,
+      // });
+  
+      // history.push(`/service-order/SO${new_stock}`);
+  
+      // await firebase.firestore().doc('admin/counters').update({lastOrder: new_stock});
+      
+    }
+
+    const addToServiceOrder = async () => {
       //Get updated inspection
       let updated_inspection = await firebase.firestore().doc('inspections/'+stock).get();
       updated_inspection = updated_inspection.data();
-      console.log(updated_inspection);
 
-      let order = {name: `${stock} Inspection`, notes: "Inspection generated order", stock};
-      order.services = Object.values(sections)
-                        .map(section => section.order_points === "all" ? section.points : section.order_points)
-                        .flat()
-                        .filter(point => !["green", "n/a", undefined, false].includes(updated_inspection[point]))
-                        .map((point, i) => ({name: formatTitle(point)}) );
-      if(order.services.length < 1) return StateManager.setAlertAndOpen("Inspection must have atleast 1 yellow or red point to submit.", "error");
+      const issues = Object.keys(updated_inspection).filter((key) =>["red", "orange"].includes(updated_inspection[key]));
+      console.log(issues);
 
-      StateManager.setLoading(true);
-      const response = await RequestManager.post({function: "makeOrderWithServices", variables: {stock, order}});
-      order.shopmonkeyId = response.data.shopmonkeyId;
-      order.isSaved = true;
+      const services = issues.map(issue => {
+        const service = {
+          name: `${issue} - ${updated_inspection[`${issue}-description`] || ""}`,
+          isComplete: false,
+          isApproved: false, 
+          status: "pending",
+          mechanicName: "",
+          assignDate: moment().format('YYYY/MM/DD'),
+          time: 0, 
+          cost: 0,
+        }
+        return service;
+      })
 
-      await firebase.firestore().collection("service_orders").doc().set(order, {merge: true});
-      // await firebase.firestore().doc('inspections/'+stock).update({complete: true});
-      StateManager.setLoading(false);
-      StateManager.setAlertAndOpen("Sync successful!", "success");
+      console.log(services);
+
+      // let order = {name: `${stock} Inspection`, notes: "Inspection generated order", stock};
+      // order.services = Object.values(sections)
+      //                   .map(section => section.order_points === "all" ? section.points : section.order_points)
+      //                   .flat()
+      //                   .filter(point => !["green", "n/a", undefined, false].includes(updated_inspection[point]))
+      //                   .map((point, i) => ({name: formatTitle(point)}) );
+      // if(order.services.length < 1) return StateManager.setAlertAndOpen("Inspection must have atleast 1 yellow or red point to submit.", "error");
+
+      // StateManager.setLoading(true);
+      // const response = await RequestManager.post({function: "makeOrderWithServices", variables: {stock, order}});
+      // order.shopmonkeyId = response.data.shopmonkeyId;
+      // order.isSaved = true;
+
+      // await firebase.firestore().collection("service_orders").doc().set(order, {merge: true});
+      // // await firebase.firestore().doc('inspections/'+stock).update({complete: true});
+      // StateManager.setLoading(false);
+      // StateManager.setAlertAndOpen("Sync successful!", "success");
     }
 
     return (
@@ -112,6 +155,11 @@ export default function Inspection(props) {
                 </div>
             )
           }
+          <div style={{marginTop: 10}}>
+            <Button variant="contained" color="primary" onClick={addToServiceOrder}>
+                Add Issues to Service Order
+            </Button>
+          </div>
           {
             Object.values(sections).map((section, i) => {
               const {title, points} = section;
@@ -121,22 +169,33 @@ export default function Inspection(props) {
                 </div>
               )
 
+              const notesId = `${title.toLowerCase().replace(/ /g, '-')}-notes`;
+
               return (
                 <div style={{paddingTop: 10}}>
                   <Typography variant={"h5"} align="left" style={{padding: 7}}>
                     {formatTitle(title)}
                   </Typography>
                   {components}
+                  <div style={{marginTop: 10, marginBottom: 20}}>
+                    <TextLine 
+                      id={notesId}
+                      data={inspection}
+                      onChange={(id, value) => updater('inspections', {[id]: value})}
+                      label={`${formatTitle(title)} Notes`}
+                      multiline={true}
+                      rows={3}
+                    />
+                  </div>
                 </div>
               )
-
             })
           }
-          {/* <div style={{marginTop: 10}}>
-            <Button variant="contained" color="primary" onClick={makeOrder}>
-                Send to Service Dept
+          <div style={{marginTop: 10}}>
+            <Button variant="contained" color="primary" onClick={addToServiceOrder}>
+              Add Issues to Service Order
             </Button>
-          </div> */}
+          </div>
         </>
     );
 }
@@ -173,6 +232,9 @@ const sections = [
         "Transfer Case Fluid",
         "Power Steering Fluid",
         "Fluid Leaks Hoses, Lines and Fittings",
+        "Oil Pan Leak",
+        "Trans leak",
+        "Differential leak",
         "Belts",
         "Wiring",
         "Oil in Air Cleaner Housing",
@@ -200,7 +262,14 @@ const sections = [
         "Body and Suspension Squeaks and Rattles",
         "Struts/Shocks Operate Properly",
         "Brakes Operate Properly",
-        "Gauges Operate Properly"
+        "Fuel Gauge Operates Properly",
+        "Speedometer Operates Properly",
+        "Temperature Gauge Operates Properly",
+        "Tachometer Operates Properly",
+        "Oil Gauge Operates Properly",
+        "Oil Temperature Gauge Operates Properly",
+        "Oil Pressure Gauge Operates Properly",
+        "Water Gauge Operates Properly",
       ]
     },
     {

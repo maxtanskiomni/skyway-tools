@@ -75,7 +75,7 @@ export default function Invoices(props) {
         ...doc,
         taxes: doc.salesTax + doc.surtax,
         actions: Selector(doc.id),
-        rowLink: `../form/${params.form}?i=${doc.id}&${variables}&tab=${tab}&redirect=${redirect}`,
+        rowLink: props.disabled ? null : `../form/${params.form}?i=${doc.id}&${variables}&tab=${tab}&redirect=${redirect}`,
         // rowAction: () => showFile(doc.data().files[0])
       }
     }

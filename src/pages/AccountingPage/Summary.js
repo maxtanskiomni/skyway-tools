@@ -26,17 +26,19 @@ export default function Summary(props) {
   const nonNTOs = payables.filter(x => !x.isNTO).reduce((a,c) => a + (c.amount || 0), 0);
   const NTOs = payables.filter(x => x.isNTO && x.isFunded).reduce((a,c) => a + (c.amount || 0), 0);
   const LOCs = (summary.seacoastLOCBalance || 0)
+  const prepaidAssets = (summary.prepaidAssets || 0)
   // console.log(inventory.filter(x => x.value < 0))
 
   const skywayInventory = inventory.filter(x => x.value > 0).reduce((a,c) => a + (c.value || 0), 0);
-  const ronInventory = ronChecks.reduce((a,c) => a + c.amount, 0);
+  // const ronInventory = ronChecks.reduce((a,c) => a + c.amount, 0);
+  const ronInventory = data.ron_cars.reduce((a,c) => a + (c.nto || 0), 0);
 
   const service_receivables = orders.filter(x => x.invested_cost > 0).reduce((a,c) => a + (c.receivable || 0), 0);
   const service_net_inventory = orders.filter(x => x.invested_cost > 0).reduce((a,c) => a + (c.net_inventory || 0), 0);
 
   const net_cash = (summary.mercuryBalance + summary.wellsFargoBalance + summary.seacoastBalance + summary.pilotBalance + summary.cashBalance - checks) || 0;
   const accounts_receiveable = funding.reduce((a,c) => a + c.deals.reduce((a,c) => a + c.amount, 0), 0);
-  const working_capital = service_receivables + skywayInventory + net_cash - NTOs - LOCs + accounts_receiveable*0.14;
+  const working_capital = service_receivables + skywayInventory + net_cash - NTOs - LOCs + accounts_receiveable*0.14 + prepaidAssets;
   const current_ratio = ((service_receivables + skywayInventory + net_cash) / (NTOs+LOCs)) * 100;
 
 
@@ -97,8 +99,8 @@ export default function Summary(props) {
               Last Update: {summary.lastAccountingUpdate}
               {
               moment(summary.lastAccountingUpdate).isBefore(moment().subtract(24, "hours")) 
-                ? <QueryBuilderIcon style={{ marginLeft: 10,  fontSize: 24, color:"gray" }} /> 
-                : <ThumbUp style={{ marginLeft: 10, fontSize: 24, color:"green" }} />
+                ? <QueryBuilderIcon style={{ marginLeft: 10,  fontSize: 24, color:"gray" }} className="no-print" /> 
+                : <ThumbUp style={{ marginLeft: 10, fontSize: 24, color:"green" }} className="no-print" />
               }
             </Typography>
           
@@ -118,8 +120,13 @@ export default function Summary(props) {
             <Typography variant="p" display="block">Net Balance: ${net_cash.toLocaleString(undefined, {minimumFractionDigits: 2})}</Typography>
           </div>
 
-          <div style={{marginTop:10, marginBottom:10}}>
+          {/* <div style={{marginTop:10, marginBottom:10}}>
             <Typography variant="p" display="block">Ron Overdue: ${credit.toLocaleString(undefined, {minimumFractionDigits: 2})}</Typography>
+          </div> */}
+
+          <div style={{marginTop:10, marginBottom:10}}>
+            <Typography variant="p" display="block">Prepaid Assets: ${prepaidAssets.toLocaleString(undefined, {minimumFractionDigits: 2})}</Typography>
+            {/* <Typography variant="p" display="block">Includes prepaid property insurance (32K), GL insurance(12K), Dallas deposit(15K), and trailer balance(45K)</Typography> */}
           </div>
 
           <div style={{marginTop:10, marginBottom:10}}>

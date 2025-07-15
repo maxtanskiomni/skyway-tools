@@ -76,7 +76,7 @@ export default function MechanicPage(props) {
                     .then(async (snap) => {
                       console.log("unfinsihed going")
                       let services = snap.docs.map(getDocData);
-                      if(StateManager.userType !== "admin") services = services.filter(x => x.mechanicID === StateManager.userID);
+                      if(!StateManager.isManager()) services = services.filter(x => x.mechanicID === StateManager.userID); //"FXbkDzwrCVeEda2g2bxPEJLfIFD2"
                       services = await getCars(services);
                       const orders = await getReadyOrders(services);
                       data.pending_services = services;
@@ -95,7 +95,7 @@ export default function MechanicPage(props) {
                       console.log("finsihed going")
                       let services = snap.docs.map(getDocData);
                       services = await getCars(services);
-                      if(StateManager.userType !== "admin") services = services.filter(x => x.mechanicID === StateManager.userID);
+                      if(!StateManager.isManager()) services = services.filter(x => x.mechanicID === StateManager.userID); //"FXbkDzwrCVeEda2g2bxPEJLfIFD2"
                       data.finished_services = services;
                       setPayload({...data});
                     });
@@ -132,9 +132,9 @@ export default function MechanicPage(props) {
   }
 
   const sections = {
-    'pending': (i) => loading ? <CircularProgress /> : <Items items={(payload.pending_services || []).filter(x => defaultFilter(x, term))} showSummary/>,
+    'pending': (i) => loading ? <CircularProgress /> : <Items items={(payload.pending_services || []).filter(x => defaultFilter(x, term))} type="pending" showSummary/>,
     // 'ready': (i) => loading ? <CircularProgress /> : <Items items={(payload.ready_services || []).filter(x => defaultFilter(x, term))} showSummary/>,
-    'complete': (i) => loading ? <CircularProgress /> : <Items items={(payload.finished_services || []).filter(x => defaultFilter(x, term))} disableItems showSummary/>
+    'complete': (i) => loading ? <CircularProgress /> : <Items items={(payload.finished_services || []).filter(x => defaultFilter(x, term))} type="complete" showSummary/>
   };
 
   const changeDate = (date) => {

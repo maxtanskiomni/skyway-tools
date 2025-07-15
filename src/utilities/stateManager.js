@@ -12,6 +12,8 @@ class StateModule {
       this.userID = localStorage.getItem('userID') || sessionStorage.getItem('userID') || "";
       this.userType = localStorage.getItem('userType') || sessionStorage.getItem('userType') || "";
       this.userName = constants.userNames[this.userID] || "not a real user";
+      this.mechanicId = localStorage.getItem('mechanicId') || sessionStorage.getItem('mechanicId') || "";
+      this.mechanicName = localStorage.getItem('mechanicName') || sessionStorage.getItem('mechanicName') || "";
       this.selectedSOs = [];
       this.orgID = "skyway-classics";
     }
@@ -250,6 +252,11 @@ class StateModule {
       return ["admin", "manager"].includes(this.userType);
     }
 
+    isSales = () => {
+      // return false
+      return ["sales"].includes(this.type);
+    }
+
     isBackoffice = () => {
       // return false
       return ["admin", "manager", "backoffice"].includes(this.userType);
@@ -258,6 +265,28 @@ class StateModule {
     isPorter = () => {
       // return false
       return ["admin", "porter"].includes(this.userType);
+    }
+
+    setMechanicState = (mechanicId, mechanicName) => {
+      this.mechanicId = mechanicId;
+      this.mechanicName = mechanicName;
+      
+      // Update both storage types
+      localStorage.setItem('mechanicId', mechanicId);
+      localStorage.setItem('mechanicName', mechanicName);
+      sessionStorage.setItem('mechanicId', mechanicId);
+      sessionStorage.setItem('mechanicName', mechanicName);
+    }
+
+    clearMechanicState = () => {
+      this.mechanicId = "";
+      this.mechanicName = "";
+      
+      // Clear from both storage types
+      localStorage.removeItem('mechanicId');
+      localStorage.removeItem('mechanicName');
+      sessionStorage.removeItem('mechanicId');
+      sessionStorage.removeItem('mechanicName');
     }
 }
 

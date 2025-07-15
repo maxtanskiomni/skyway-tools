@@ -28,14 +28,14 @@ import SOUpdatePopup from './SOUpdatePopup';
 const headers = {
   services: [ 
     {key:'select', label:'', noLink:true, noAction:true},
-    {key:'status_time', label:'Date', format: "date"},
-    {key:'writer', label:'Writter'},
+    // {key:'status_time', label:'Date', format: "date"},
+    {key:'score', label:'Priority'},
     {key:'id', label:'SO Number'},  
+    {key:'mechanicName', label:'Primary Mechanic'},
     {key:'carTitle', label:'Car'}, 
     {key:'customer', label:'Customer'},
     {key:'total_time', label:'Status Time'},
     {key:'order_time', label:'Total Time'},
-    // {key:'mechanicName', label:'Mechanic'},
     // {key:'time', label:'Hours'}, 
     StateManager.userType === "admin" ? {key:'revenue', label:'Revenue', format:'usd'} : {},
     // {key:'actions', label:'Actions', noLink:true}
@@ -50,13 +50,13 @@ export default function Transactions(props) {
   const { items = [], stockNumber, type = "services", checkLimit = 1, disabled = false, showSummary, group = "",  disableItems = false } = props;
   const [transactions, setTransactions] = React.useState(items);
 
+  console.log(transactions)
+
   const rows = transactions.map(transaction => {
     return makeObject(transaction, type, {transactions, setTransactions, stockNumber, disableItems});
   })
   .sort(function(a,b){
-    const first = +((a.status_time || '2021/1/1/').replace(/\//g, ""));
-    const second = +((b.status_time || '2021/1/1').replace(/\//g, ""));
-    return first - second;
+    return (b.score || 0) - (a.score || 0);
   });
 
   const times = transactions.map(x => x.total_time).filter(x => x>0);
@@ -87,12 +87,13 @@ export default function Transactions(props) {
 }
 
 const makeObject = (transaction, type, params = {}) => {
+  
 
   return {
     ...transaction,
     isComplete:  ToggleIndicator(transaction.status === constants.service_statuses.at(-1), {type, id: transaction.id, disabled: params.disableItems}),
     select:  ToggleIndicator(false, {type, id: transaction.id, disabled: params.disableItems}),
-    mechanicName:  transaction.mechanic,
+    mechanicName:  transaction.mechanicName,
     rowLink: `/service-order/${transaction.id}`,
     // orderLink: `/service-order/${transaction.order}`,
     // carTitleLink: `/car/${transaction.car}`

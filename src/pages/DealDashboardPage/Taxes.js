@@ -26,6 +26,7 @@ export default function Taxes(props) {
       {key:'excess', label:'5k Excess', format:'usd'}, 
       {key:'surtax', label:'Surtax', format:'usd'},
       {key:'salesTax', label:'Sales Tax', format:'usd'}, 
+      {key:'state', label:'State'}, 
       {key:'tax_rate', label:'Effective Percent'}, 
     ],
     title: '', 
