@@ -11,11 +11,8 @@ import {
   Typography,
   TextField,
   InputAdornment,
-  Divider,
   useTheme,
   alpha,
-  IconButton,
-  Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -34,10 +31,12 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AddIcon from '@mui/icons-material/Add';
 import moment from 'moment';
 import firebase from '../../utilities/firebase';
 import { StateManager } from '../../utilities/stateManager';
 import constants from '../../utilities/constants';
+import OrderPartDialog from '../../components/OrderPartDialog';
 
 const PartsBlade = ({ order, onClose, onUpdate }) => {
   const theme = useTheme();
@@ -47,6 +46,7 @@ const PartsBlade = ({ order, onClose, onUpdate }) => {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [pendingPartId, setPendingPartId] = useState(null);
+  const [addPartDialogOpen, setAddPartDialogOpen] = useState(false);
   const isAdmin = StateManager.isAdmin();
 
   // Fetch parts for this order
@@ -80,6 +80,19 @@ const PartsBlade = ({ order, onClose, onUpdate }) => {
 
     fetchParts();
   }, [order.id]);
+
+  // Keep parts state in sync with order prop
+  useEffect(() => {
+    if (order && order.parts) {
+      setParts(order.parts);
+    }
+  }, [order?.parts]);
+
+  const handleAddPart = () => {
+    // The real-time listeners in the parent component will handle updates automatically
+    // This function is called when a part is successfully added via OrderPartDialog
+    console.log('Part added successfully');
+  };
 
   const handlePartUpdate = async (partId, updates) => {
     try {
@@ -254,20 +267,29 @@ const PartsBlade = ({ order, onClose, onUpdate }) => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <TextField
-        fullWidth
-        placeholder="Search parts..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        sx={{ mb: 2 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-      />
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField
+          fullWidth
+          placeholder="Search parts..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setAddPartDialogOpen(true)}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          Order Parts
+        </Button>
+      </Box>
       
       {filteredParts.length === 0 ? (
         <Box display="flex" flexDirection="column" alignItems="center" gap={2} sx={{ py: 4 }}>
@@ -316,6 +338,14 @@ const PartsBlade = ({ order, onClose, onUpdate }) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Order Part Dialog */}
+      <OrderPartDialog
+        open={addPartDialogOpen}
+        onClose={() => setAddPartDialogOpen(false)}
+        order={order}
+        onSuccess={handleAddPart}
+      />
     </Box>
   );
 };

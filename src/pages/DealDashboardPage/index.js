@@ -8,7 +8,7 @@ import Payables from './Payables.js';
 import Commissions from './Commissions.js';
 import DMV from './DMV.js';
 import Finance from './Finance.js';
-import DateLine from '../../components/DateLine';
+import DateRangeSelector from '../../components/DateRangeSelector';
 import TabContainer from '../../components/TabContainer.js';
 import history from '../../utilities/history';
 import moment from 'moment';
@@ -28,12 +28,19 @@ import constants from '../../utilities/constants.js';
 
 let timeout = () => null;
 export default function DealDashboard(props) {
-  const { month } = props.match.params;
-  const monthStart =  moment(month).startOf('month');
-  const monthEnd = moment(month).endOf('month');
+  // Parse start and end dates from URL params, default to current month
+  const { startDate, endDate } = props.match.params;
+  const defaultStartDate = moment().startOf('month').format('YYYY-MM-DD');
+  const defaultEndDate = moment().endOf('month').format('YYYY-MM-DD');
+  
+  const startDateParam = startDate || defaultStartDate;
+  const endDateParam = endDate || defaultEndDate;
+  
+  const monthStart = moment(startDateParam);
+  const monthEnd = moment(endDateParam);
 
   const [payload, setPayload] = React.useState([]);
-  StateManager.setTitle("Deals Dashboard - "+moment(month).format("MMM YYYY"));
+  StateManager.setTitle(`Deals Dashboard - ${monthStart.format("MMM DD")} to ${monthEnd.format("MMM DD, YYYY")}`);
   
   const [term, setTerm] = React.useState(StateManager.isBackoffice() ? "" : StateManager.userName);
 
@@ -52,15 +59,52 @@ export default function DealDashboard(props) {
     async function fetchData() {
       StateManager.setLoading(true);
       const db = firebase.firestore();
-      const snaps = {
-        deals: await db.collection('deals').where('month', '==', month).get(),
-        shipping: await db.collection('deals').where('shipping_month', '==', month).get(),
-        shipping_in: await db.collection('deals').where('shipping_in_month', '==', month).get(),
-        finance: await db.collection('deals').where('month', '==', month).where("is_finance", "==", true).get(),
-        service: await db.collection('orders')
+      
+      // For date range queries, we need to handle multiple months
+      // Get all months between start and end date
+      const months = [];
+      let currentMonth = monthStart.clone().startOf('month');
+      const endMonth = monthEnd.clone().startOf('month');
+      
+      while (currentMonth.isSameOrBefore(endMonth)) {
+        months.push(currentMonth.format('YYYY-MM'));
+        currentMonth.add(1, 'month');
+      }
+      
+      // Query for each month and combine results
+      const dealsPromises = months.map(month => 
+        db.collection('deals').where('month', '==', month).get()
+      );
+      const shippingPromises = months.map(month => 
+        db.collection('deals').where('shipping_month', '==', month).get()
+      );
+      const shippingInPromises = months.map(month => 
+        db.collection('deals').where('shipping_in_month', '==', month).get()
+      );
+      const financePromises = months.map(month => 
+        db.collection('deals').where('month', '==', month).where("is_finance", "==", true).get()
+      );
+      const servicePromises = months.map(month => 
+        db.collection('orders')
           .where('complete_date', '>=', month)
           .where('complete_date', '<', moment(month).add(1, "month").format("YYYY-MM"))
           .get()
+      );
+      
+      const [dealsResults, shippingResults, shippingInResults, financeResults, serviceResults] = await Promise.all([
+        Promise.all(dealsPromises),
+        Promise.all(shippingPromises),
+        Promise.all(shippingInPromises),
+        Promise.all(financePromises),
+        Promise.all(servicePromises)
+      ]);
+      
+      const snaps = {
+        deals: { docs: dealsResults.flatMap(result => result.docs) },
+        shipping: { docs: shippingResults.flatMap(result => result.docs) },
+        shipping_in: { docs: shippingInResults.flatMap(result => result.docs) },
+        finance: { docs: financeResults.flatMap(result => result.docs) },
+        service: { docs: serviceResults.flatMap(result => result.docs) }
       }
 
       async function getDealData() {
@@ -86,6 +130,7 @@ export default function DealDashboard(props) {
             data.state = data.customer.state || "";
             data.outOfState = data.state !== "FL" ? "out of state" : false;
             data.inState = data.state === "FL" ? "in state" : false;
+            data.customerName = `${data.customer.first_name || ''} ${data.customer.last_name || ''}`;
   
             //Funding data
             const invoiceSnap = await db.doc('invoices/'+data.invoice).get();
@@ -125,11 +170,11 @@ export default function DealDashboard(props) {
   
             //Misc data
             data.profit = data.revenue - data.cogs;
-            const protected_factor = month <= "2024-04" ? 1.00 : 1.00;
+            const protected_factor = monthStart.format('YYYY-MM') <= "2024-04" ? 1.00 : 1.00;
             data.protected_cogs = data.cogs*protected_factor;
             data.protected_profit = Math.max(0, data.revenue - data.protected_cogs);
             data.ship_profit = data.ship_revenue - data.ship_cogs;
-            data.rowLink = `../car/${data.stock}`;
+            data.rowLink = `../../car/${data.stock}`;
   
             return data;
           }
@@ -332,7 +377,7 @@ export default function DealDashboard(props) {
       StateManager.setLoading(false);
     }
     fetchData();
-  }, [month]);
+  }, [startDateParam, endDateParam]);
 
   const keysToRemove = StateManager.isBackoffice() ? [] : [
     "performance",
@@ -368,7 +413,7 @@ export default function DealDashboard(props) {
   };
 
   const sections = {
-    'performance': (i) => <Performance data={i} />,
+    // 'performance': (i) => <Performance data={i} />,
     'cars-sold': (i) => <SoldCars rows={i.filter(x => x.type === "deal")} />,
     'verified-deals': (i) => <Deals rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} filter={x => x.deposits >= 1000} />,
     'working': (i) => <Deals rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} filter={x => x.deposits < 1000} />,
@@ -386,22 +431,22 @@ export default function DealDashboard(props) {
     'DMV': (i) => <DMV rows={i.filter(x => x.type === "deal").filter(x => defaultFilter(x, term))} />,
   }.filterKeys(keysToRemove);
 
-  const changeMonth = (date) => {
+  const changeDateRange = (startDate, endDate) => {
     StateManager.setLoading(true);
-    const new_date = moment(date).format("YYYY-MM")
+    const startDateStr = moment(startDate).format("YYYY-MM-DD");
+    const endDateStr = moment(endDate).format("YYYY-MM-DD");
     const url = new URL(window.location.href);
-    history.push("/deal-dashboard/"+new_date+url.search);
+    history.push(`/deal-dashboard/${startDateStr}/${endDateStr}${url.search}`);
   }
 
   return (
     <>
       <Grid style={{padding: 20}}>
-        <DateLine 
-          label="Month" 
-          startDate={moment(month).format("MM/DD/YYYY")}
-          callback={changeMonth}
-          dateFormat="MM/yyyy"
-          showMonthYearPicker
+        <DateRangeSelector 
+          startDate={startDateParam}
+          endDate={endDateParam}
+          onDateRangeChange={changeDateRange}
+          title="Deals Dashboard Period"
         />
         {
           StateManager.isAdmin() && (

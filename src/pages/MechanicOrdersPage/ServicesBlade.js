@@ -25,6 +25,8 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Menu,
+  CircularProgress,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import BuildIcon from '@mui/icons-material/Build';
@@ -37,10 +39,13 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
+import AddIcon from '@mui/icons-material/Add';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import moment from 'moment';
 import firebase from '../../utilities/firebase';
 import { StateManager } from '../../utilities/stateManager';
 import constants from '../../utilities/constants';
+import AddServiceOrderDialog from '../../components/AddServiceOrderDialog';
 
 const ServicesBlade = ({ order, onClose, onUpdate }) => {
   const theme = useTheme();
@@ -49,7 +54,27 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
   const [mechanicDialogOpen, setMechanicDialogOpen] = useState(false);
   const [selectedMechanicId, setSelectedMechanicId] = useState('');
   const [pendingServiceId, setPendingServiceId] = useState(null);
-  const isAdmin = StateManager.isAdmin();
+  const isAdmin = StateManager.isBackoffice();
+
+  // --- STATE for split dialog ---
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [splitServiceId, setSplitServiceId] = useState(null);
+  const [splitHours, setSplitHours] = useState('');
+  const [splitError, setSplitError] = useState('');
+  const [splitLoading, setSplitLoading] = useState(false);
+  // --- STATE for actions menu ---
+  const [actionsAnchorEl, setActionsAnchorEl] = useState(null);
+  const [actionsServiceId, setActionsServiceId] = useState(null);
+
+  // --- STATE for AddServiceOrderDialog ---
+  const [addServiceDialogOpen, setAddServiceDialogOpen] = useState(false);
+
+  // Keep services state in sync with order prop
+  useEffect(() => {
+    if (order && order.services) {
+      setServices(order.services);
+    }
+  }, [order?.services]);
 
   const handleServiceUpdate = async (serviceId, updates) => {
     console.log('handleServiceUpdate', serviceId, updates);
@@ -110,14 +135,118 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
     setPendingServiceId(null);
   };
 
+  const handleAddService = (newServices) => {
+    // The real-time listeners in the parent component will handle updates automatically
+    // We can just call onUpdate to notify the parent that services were added
+    if (newServices && Array.isArray(newServices)) {
+      onUpdate(newServices);
+    }
+  };
+
   const handleAddTime = (serviceId) => {
     // TODO: Implement add time functionality
     console.log('Add time for service:', serviceId);
   };
 
-  const handleOrderPart = (serviceId) => {
-    // TODO: Implement order part functionality
-    console.log('Order part for service:', serviceId);
+  // --- SPLIT LOGIC ---
+  const handleOpenSplitDialog = (serviceId) => {
+    setSplitServiceId(serviceId);
+    setSplitHours('');
+    setSplitError('');
+    setSplitDialogOpen(true);
+  };
+
+  const handleCloseSplitDialog = () => {
+    setSplitDialogOpen(false);
+    setSplitServiceId(null);
+    setSplitHours('');
+    setSplitError('');
+  };
+
+  const handleConfirmSplit = async () => {
+    const service = services.find(s => s.id === splitServiceId);
+    if (!service) return;
+    const originalHours = parseFloat(service.time) || 0;
+    const hoursToSplit = parseFloat(splitHours);
+    if (isNaN(hoursToSplit) || hoursToSplit <= 0) {
+      setSplitError('Please enter a valid number of hours.');
+      return;
+    }
+    if (hoursToSplit >= originalHours) {
+      setSplitError('Split hours must be less than the original hours.');
+      return;
+    }
+    setSplitLoading(true);
+    // Find mechanic/rate for cost calculation
+    const mechanicID = service.mechanicID || order.mechanicId;
+    const mechanicObj = constants.mechanics.find(m => m.id === mechanicID);
+    const rate = mechanicObj?.rate || 0;
+    // Find next part number for this service name
+    const baseName = service.name.replace(/ - part \d+$/, '');
+    const siblings = services.filter(s => s.name.startsWith(baseName));
+    let maxPart = 1;
+    siblings.forEach(s => {
+      const match = s.name.match(/ - part (\d+)$/);
+      if (match) {
+        maxPart = Math.max(maxPart, parseInt(match[1], 10));
+      }
+    });
+    const newPartNum = maxPart + 1;
+    // Prepare new service object
+    const docRef = await firebase.firestore().collection('services').doc();
+    const newService = {
+      ...service,
+      name: `${baseName} - part ${newPartNum}`,
+      time: hoursToSplit,
+      cost: rate * hoursToSplit,
+      created_at: moment().format('YYYY/MM/DD'),
+      status: 'pending',
+      id: docRef.id,
+    };
+    // Update original service
+    const updatedOriginal = {
+      ...service,
+      time: originalHours - hoursToSplit,
+      cost: rate * (originalHours - hoursToSplit),
+    };
+    try {
+      // Add new service to Firestore
+      await docRef.set({
+        ...newService,
+        order: order.id,
+      });
+      // Update original service in Firestore
+      await firebase.firestore().collection('services').doc(service.id).update({
+        time: updatedOriginal.time,
+        cost: updatedOriginal.cost,
+      });
+      // Update local state (show new service immediately)
+      const updatedServices = services
+        .map(s => s.id === service.id ? { ...updatedOriginal } : s)
+        .concat([newService]);
+      setServices(updatedServices);
+      onUpdate(updatedServices);
+      setSplitLoading(false);
+      handleCloseSplitDialog();
+    } catch (error) {
+      console.error('Error splitting service:', error);
+      StateManager.setAlertAndOpen('Error splitting service', 'error');
+      setSplitLoading(false);
+    }
+  };
+
+  // --- ACTIONS MENU LOGIC ---
+  const handleOpenActionsMenu = (event, serviceId) => {
+    setActionsAnchorEl(event.currentTarget);
+    setActionsServiceId(serviceId);
+  };
+  const handleCloseActionsMenu = () => {
+    setActionsAnchorEl(null);
+    setActionsServiceId(null);
+  };
+  const handleMenuSplit = () => {
+    handleOpenSplitDialog(actionsServiceId);
+    handleCloseActionsMenu();
   };
 
   const filteredServices = useMemo(() => {
@@ -178,31 +307,20 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
                     </Typography>
                   </Box>
                 </TableCell>
-                {/* <TableCell align="right">
+                <TableCell align="right">
                   <Box display="flex" gap={1} justifyContent="flex-end">
-                    {service.status === 'complete' ? (
-                      <Tooltip title="Add Time">
-                        <IconButton
-                          onClick={() => handleAddTime(service.id)}
-                          size="small"
-                          sx={{ color: theme.palette.primary.main }}
-                        >
-                          <AccessTimeIcon />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      <Tooltip title="Order Part">
-                        <IconButton
-                          onClick={() => handleOrderPart(service.id)}
-                          size="small"
-                          sx={{ color: theme.palette.info.main }}
-                        >
-                          <ShoppingCartIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
+                    <Tooltip title="Split Service Time">
+                      <IconButton
+                        onClick={() => handleOpenSplitDialog(service.id)}
+                        size="small"
+                        sx={{ color: theme.palette.primary.main }}
+                      >
+                        <Divider sx={{ display: 'inline', width: 2, height: 20, bgcolor: theme.palette.primary.main, mr: 1 }} />
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>Split</Typography>
+                      </IconButton>
+                    </Tooltip>
                   </Box>
-                </TableCell> */}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -213,20 +331,31 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <TextField
-        fullWidth
-        placeholder="Search services..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        sx={{ mb: 2 }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon />
-            </InputAdornment>
-          ),
-        }}
-      />
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField
+          fullWidth
+          placeholder="Search services..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+        />
+        {isAdmin && (
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setAddServiceDialogOpen(true)}
+          sx={{ whiteSpace: 'nowrap' }}
+          >
+            Add Services
+          </Button>
+        )}
+      </Box>
       {filteredServices.length === 0 ? (
         <Box display="flex" flexDirection="column" alignItems="center" gap={2} sx={{ py: 4 }}>
           <WarningIcon sx={{ fontSize: 48, color: theme.palette.warning.main }} />
@@ -283,6 +412,42 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Split Service Dialog */}
+      <Dialog open={splitDialogOpen} onClose={handleCloseSplitDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Split Service Time</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Enter the number of hours to split off from this service:
+          </Typography>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Hours to split"
+            type="number"
+            fullWidth
+            value={splitHours}
+            onChange={e => setSplitHours(e.target.value)}
+            error={!!splitError}
+            helperText={splitError}
+            inputProps={{ min: 0, step: 0.1 }}
+            disabled={splitLoading}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSplitDialog} disabled={splitLoading}>Cancel</Button>
+          <Button onClick={handleConfirmSplit} variant="contained" disabled={splitLoading}>
+            {splitLoading ? <CircularProgress size={24} color="inherit" /> : 'Split'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Service Dialog */}
+      <AddServiceOrderDialog
+        open={addServiceDialogOpen}
+        onClose={() => setAddServiceDialogOpen(false)}
+        serviceOrderId={order?.id}
+        callback={handleAddService}
+      />
     </Box>
   );
 };

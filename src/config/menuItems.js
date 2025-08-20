@@ -24,6 +24,7 @@ import {
   CreditCard,
   Analytics,
   Store,
+  AssignmentInd,
 } from '@mui/icons-material';
 import { ListItemIcon, ListItemText, Box, Typography, MenuItem, Divider } from '@mui/material';
 
@@ -51,6 +52,7 @@ const iconMap = {
   credit_card: CreditCard,
   analytics: Analytics,
   store: Store,
+  assignment_ind: AssignmentInd,
 };
 
 // Menu sections with their respective items
@@ -61,9 +63,15 @@ export const menuSections = [
     items: [
       {
         label: 'Deal Dashboard',
-        path: `/deal-dashboard/${moment().format("YYYY-MM")}`,
+        path: `/deal-dashboard/${moment().startOf('month').format("YYYY-MM-DD")}/${moment().endOf('month').format("YYYY-MM-DD")}`,
         permission: 'deal-dashboard',
         icon: 'attach_money',
+      },
+      {
+        label: 'Consignment Dashboard',
+        path: '/consignment-dashboard',
+        permission: 'deal-dashboard',
+        icon: 'assignment_ind',
       },
       {
         label: 'Process Pipeline',
@@ -174,6 +182,20 @@ export const menuSections = [
         permission: 'service-pipeline',
         icon: 'build_circle',
         color: 'secondary',
+      },
+      {
+        label: 'Add Customer',
+        action: 'addCustomer',
+        permission: 'customer',
+        icon: 'person',
+        color: 'success',
+      },
+      {
+        label: 'Add Lead',
+        action: 'addLead',
+        permission: 'leads',
+        icon: 'person_search',
+        color: 'info',
       },
     ],
   },

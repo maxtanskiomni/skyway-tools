@@ -91,6 +91,7 @@ class StateModule {
 
     banks = [
         {
+            id: "workers",
             name: "Workers Federal Credit Union",
             address: "119 Russell St",
             city: "Littleton",
@@ -101,46 +102,51 @@ class StateModule {
         },
 
         {
-            name: "Greenwood Credit Union",
-            address: "2669 Post Road",
-            city: "Warwick",
-            state: "RI",
-            zip: "02886",
-            lien_id: "03885706",
-            is_elt: true,
+          id: "greenwood",
+          name: "Greenwood Credit Union",
+          address: "2669 Post Road",
+          city: "Warwick",
+          state: "RI",
+          zip: "02886",
+          lien_id: "03885706",
+          is_elt: true,
         },
 
         {
-            name: "JJ Best Banc & Co.",
-            address: "60 N Water St",
-            city: "New Bedford",
-            state: "MA",
-            zip: "02740",
-            lien_id: "228381777",
-            is_elt: true,
+          id: "jjbest",
+          name: "JJ Best Banc & Co.",
+          address: "60 N Water St",
+          city: "New Bedford",
+          state: "MA",
+          zip: "02740",
+          lien_id: "228381777",
+          is_elt: true,
         },
 
         {
-            name: "Floridacentral Credit Union",
-            address: "3333 Henderson Blvd",
-            city: " Tampa",
-            state: "FL",
-            zip: "33611",
-            lien_id: "01883301",
-            is_elt: true,
+          id: "fcu",
+          name: "Floridacentral Credit Union",
+          address: "3333 Henderson Blvd",
+          city: " Tampa",
+          state: "FL",
+          zip: "33611",
+          lien_id: "01883301",
+          is_elt: true,
         },
 
         {
-            name: "Woodside Credit LLC",
-            address: "PO BOX 12379",
-            city: "Newport Beach",
-            state: "CA",
-            zip: "92658",
-            lien_id: "231740745",
-            is_elt: true,
+          id: "woodside",
+          name: "Woodside Credit LLC",
+          address: "PO BOX 12379",
+          city: "Newport Beach",
+          state: "CA",
+          zip: "92658",
+          lien_id: "231740745",
+          is_elt: true,
         },
 
         {
+          id: "usaa",
           name: "USAA Federal Savings Bank",
           address: "PO Box 25145",
           city: "Lehigh Valley",
@@ -151,6 +157,7 @@ class StateModule {
         },
 
         {
+          id: "power",
           name: "Power Financial Credit Union",
           address: "2020 N.W. 150th Avenue, Suite #100",
           city: "Pembroke Pines",
@@ -161,6 +168,7 @@ class StateModule {
         },
 
         {
+          id: "boul",
           name: "Boulevard Specialty Lending",
           address: "PO Box 440249",
           city: "St. Louis",
@@ -171,6 +179,7 @@ class StateModule {
         },
 
         {
+          id: "medallion",
           name: "Medallion Bank",
           address: "1100 E 6600 S Suite 510",
           city: "Salt Lake City",

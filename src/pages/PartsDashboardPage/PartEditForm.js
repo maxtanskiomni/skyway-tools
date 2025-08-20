@@ -298,6 +298,17 @@ const PartEditForm = ({ part, onUpdate, onCancel, onSubmit, onDelete }) => {
                   }}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Part Number"
+                  defaultValue={part.partNumber || ''}
+                  onChange={handleTextChange('partNumber')}
+                  InputProps={{
+                    sx: { '&:hover': { backgroundColor: 'action.hover' } }
+                  }}
+                />
+              </Grid>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
@@ -325,7 +336,7 @@ const PartEditForm = ({ part, onUpdate, onCancel, onSubmit, onDelete }) => {
                   <InputLabel>Status</InputLabel>
                   <Select
                     label="Status"
-                    value={part.status || 'pending'}
+                    defaultValue={part.status || 'pending'}
                     onChange={handleSelectChange('status')}
                     sx={{ 
                       '& .MuiSelect-select': { py: 1.5 },
@@ -455,6 +466,24 @@ const PartEditForm = ({ part, onUpdate, onCancel, onSubmit, onDelete }) => {
                 </Box>
               </Grid>
             </Grid>
+          </Grid>
+
+          {/* Notes Section */}
+          <Grid item xs={12}>
+            <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'medium', color: 'text.secondary' }}>
+              Notes
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              minRows={3}
+              label="Notes"
+              defaultValue={part.notes || ''}
+              onChange={handleTextChange('notes')}
+              InputProps={{
+                sx: { '&:hover': { backgroundColor: 'action.hover' } }
+              }}
+            />
           </Grid>
 
           {/* Action Buttons */}

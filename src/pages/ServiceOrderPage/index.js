@@ -93,7 +93,7 @@ export default function ServiceOrderPage(props) {
           db.doc('cars/'+data.car).get()
           .then((car_data) => {
             data.car = {...car_data.data(), id: data.car};
-            data.car.title = `${data.car.stock || ""} ${data.car.year || ""} ${data.car.make || ""} ${data.car.model || ""}`;
+            data.car.title = `${data.car.stock || ""} - ${data.car.year || ""} ${data.car.make || ""} ${data.car.model || ""}`;
             data.car_loaded = true;
             setOrder({...data});
           });
@@ -140,10 +140,10 @@ export default function ServiceOrderPage(props) {
     'summary':  {component: <Summary order={order} updater={setOrder} disabled={order.disabled} />, condition: order.order_loaded && order.customer_loaded && order.expenses_loaded && order.car_loaded && order.deposits_loaded},
     'invoice': { component: <Invoice order={order} />, condition: order.services_loaded && order.parts_loaded && order.customer_loaded },
     // 'inspection':  {component: <Inspection car={order} updater={setOrder}/>, condition: order.inspection_loaded},
-    'services':  {component: <Items items={order.services} stockNumber={stockNumber} type="services" disabled={order.disabled} showSummary/>, condition: order.services_loaded},
-    'parts':  {component: <Items items={order.parts} stockNumber={stockNumber} type="parts" disabled={order.disabled} showSummary />, condition: order.parts_loaded},
+    'services':  {component: <Items items={order.services} stockNumber={stockNumber} type="services" disabled={order.disabled} showSummary order={order}/>, condition: order.services_loaded},
+    'parts':  {component: <Items items={order.parts} stockNumber={stockNumber} type="parts" disabled={order.disabled} showSummary order={order}/>, condition: order.parts_loaded},
     // 'subcontracts':  {component: <Items items={order.subcontracts} stockNumber={stockNumber} type="subcontracts" showSummary/>, condition: order.subs_loaded},
-    'purchases':  {component: <Items items={order.expenses} stockNumber={stockNumber} type="expenses" showSummary/>, condition: order.expenses_loaded},
+    'purchases':  {component: <Items items={order.expenses} stockNumber={stockNumber} type="expenses" showSummary order={order}/>, condition: order.expenses_loaded},
     'files':   {component: <Files order={order}/>, condition: order.files_loaded},
     'notes':  {component: <Notes order={order}/>, condition: order.order_loaded},
   };

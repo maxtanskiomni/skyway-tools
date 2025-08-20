@@ -376,7 +376,7 @@ const ShippingLoadPage = () => {
             }
           </Box>
           <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <FormControl fullWidth>
                 <InputLabel>Status</InputLabel>
                 <Select
@@ -392,7 +392,7 @@ const ShippingLoadPage = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
                 label="Created Date"
@@ -403,7 +403,18 @@ const ShippingLoadPage = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label="Departure Date"
+                  value={loadData?.departure_date ? new Date(loadData.departure_date) : null}
+                  onChange={(date) => handleUpdateField('departure_date', date ? date.toISOString() : null)}
+                  renderInput={(params) => <TextField {...params} fullWidth />}
+                />
+              </LocalizationProvider>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
                   label="Completion Date"

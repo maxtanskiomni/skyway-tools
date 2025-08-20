@@ -87,6 +87,7 @@ import ServiceStatusPage from './pages/ServiceStatusPage.js';
 import AdminToast from './components/AdminToast';
 import MechanicToast from './components/MechanicToast';
 import BankingPage from './pages/BankingPage';
+import ConsignmentDashboardPage from './pages/ConsignmentDashboardPage';
 
 
 
@@ -207,7 +208,13 @@ const App = () => {
                   <ProtectedRoute path="/customer/:id" render={props => <CustomerPage {...props} />} />
                   <ProtectedRoute path="/accounting" render={props => <AccountingPage {...props} />} />
                   <ProtectedRoute path="/banking" render={props => <BankingPage {...props} />} />
-                  <ProtectedRoute path="/deal-dashboard/:month" render={props => <DealDashboardPage {...props} />} />
+                  <ProtectedRoute path="/deal-dashboard/:startDate/:endDate" render={props => <DealDashboardPage {...props} />} />
+                  <ProtectedRoute path="/deal-dashboard/:month" render={props => {
+                    const month = props.match.params.month;
+                    const startDate = moment(month).startOf('month').format('YYYY-MM-DD');
+                    const endDate = moment(month).endOf('month').format('YYYY-MM-DD');
+                    return <Redirect to={`/deal-dashboard/${startDate}/${endDate}`} />;
+                  }} />
                   <ProtectedRoute path="/performance-dashboard/:startMonth/:endMonth" render={props => <PerformanceDashboard {...props} />} />
                   <ProtectedRoute path="/dmv-dashboard/" render={props => <DMVDashboardPage {...props} />} />
                   <ProtectedRoute path="/sales-dashboard/" render={props => <SalesDashboardPage {...props} />} />
@@ -237,6 +244,7 @@ const App = () => {
                   <ProtectedRoute path="/check-form/" render={props => <CheckForm {...props} />} />
                   <ProtectedRoute path="/parts-card-statement" render={props => <CreditCardStatementPage {...props} />} />
                   <ProtectedRoute path="/sales-inbox" render={props => <SalesInboxPage {...props} />} />
+                  <ProtectedRoute path="/consignment-dashboard" render={props => <ConsignmentDashboardPage {...props} />} />
                   {/* <ProtectedRoute path="/credit-app/:id" render={props => <CreditAppsPage {...props} />} /> */}
                   {/* unprotected pages */} 
                   <Route path="/service-priorities" render={props => <ServicePrioritiesPage {...props} />} />
@@ -303,14 +311,14 @@ const ProtectedRoute = (props) => {
 }
 
 const getHomePage = (props) => {
-  let page = <ListPage type="inventory" {...props} />
+  let page = <InventoryPage {...props} />
   switch (StateManager.userType) {
     case "mechanic":
       page = <MechanicOrdersPage {...props} />
       break;
 
     case "sales":
-      page = <ListPage type="inventory" {...props} />
+      page = <InventoryPage {...props} />
       break;
 
     case "service":

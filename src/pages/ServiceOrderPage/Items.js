@@ -1,18 +1,8 @@
 import React from 'react';
 import Grid from '@mui/material/Grid';
-import Paper from '@mui/material/Paper';
-import CircularProgress from '@mui/material/CircularProgress';
+
 import Button from '@mui/material/Button';
-import { Lightbox } from "react-modal-image";
-import MuiAlert from '@mui/material/Alert';
-import Snackbar from '@mui/material/Snackbar';
-import Typography from '@mui/material/Typography';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
+
 import SimpleTable from '../../components/SimpleTable';
 import IconButton from '@mui/material/IconButton';
 import { Delete, Receipt, CheckBox, CheckBoxOutlineBlank, ExitToApp, Sync } from '@mui/icons-material';
@@ -20,12 +10,19 @@ import firebase from '../../utilities/firebase';
 import history from '../../utilities/history';
 import { StateManager } from '../../utilities/stateManager';
 import constants from '../../utilities/constants';
-import { MenuItem, Select, TextField } from '@mui/material';
+import { MenuItem, Select, TextField, Typography, Chip, useTheme, alpha } from '@mui/material';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import WarningIcon from '@mui/icons-material/Warning';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PendingIcon from '@mui/icons-material/Pending';
 import moment from 'moment';
 import DateSelector from '../../components/DateSelector';
 import Blade from '../../components/Blade';
 import ServiceEditForm from './ServiceEditForm';
 import AddServiceOrderDialog from '../../components/AddServiceOrderDialog';
+import PartEditForm from '../PartsDashboardPage/PartEditForm';
+import OrderPartDialog from '../../components/OrderPartDialog';
 
 
 const headers = {
@@ -33,13 +30,13 @@ const headers = {
     {key:'statusSelector', label:'Status', noLink:true}, 
     {key:'name', label:'Item'},
     {key:'vendor', label:'Vendor'}, 
-    // {key:'partNumber', label:'Part Number'}, 
+    {key:'partNumber', label:'Part Number'}, 
     {key:'arrival_date', label:'Est Arrival', noLink:true}, 
-    {key:'href', label:'Link', noLink:true}, 
-    {key:'location', label:'Location'}, 
+    // {key:'href', label:'Link', noLink:true}, s
+    // {key:'location', label:'Location'}, 
     {key:'cost', label:'Estimated Cost', format:'usd'}, 
     // {key:'revenue', label:'Revenue', format:'usd'}, 
-    {key:'actions', label:'', noLink:true}
+    // {key:'actions', label:'', noLink:true}
   ],
   services: [ 
     {key:'isComplete', label:'Complete', noLink:true},
@@ -80,7 +77,7 @@ const tables = {
 
 const summaries = {
   parts: (t) => [
-    {format: 'usd', label: 'Total Estimated Cost', value: t.reduce((a,c) => a +( c.cost || 0), 0)},
+    {format: 'usd', label: 'Total Estimated Cost', value: t.reduce((a,c) => a + (c.cost || 0), 0)},
   ],
   services: (t) =>  [
     {label: 'Total Hours', value: t.reduce((a,c) => a + c.time || 0, 0)},
@@ -118,11 +115,45 @@ const sorter = {
 
 const check = (x, t = 0) => x.reduce((a,c) => a + c.amount, 0) >= t;
 
+// Status styling functions for parts
+const getStatusColor = (status, theme) => {
+  switch (status) {
+    case 'pending':
+      return theme.palette.info.main;
+    case 'inbound':
+      return theme.palette.primary.main;
+    case 'returning':
+      return theme.palette.error.main;
+    case 'complete':
+      return theme.palette.success.main;
+    default:
+      return theme.palette.grey[500];
+  }
+};
+
+const getStatusIcon = (status) => {
+  switch (status) {
+    case 'pending':
+      return <InventoryIcon />;
+    case 'inbound':
+      return <LocalShippingIcon />;
+    case 'returning':
+      return <WarningIcon />;
+    case 'complete':
+      return <CheckCircleIcon />;
+    default:
+      return <PendingIcon />;
+  }
+};
+
 export default function Transactions(props) {
-  const { items = [], stockNumber, type = "", checkLimit = 1, disabled = false, showSummary, group = "" } = props;
+  const { items = [], stockNumber, type = "", checkLimit = 1, disabled = false, showSummary, group = "", order } = props;
+  const theme = useTheme();
   const [transactions, setTransactions] = React.useState(items);
   const [selectedService, setSelectedService] = React.useState(null);
   const [bladeOpen, setBladeOpen] = React.useState(false);
+  const [selectedPart, setSelectedPart] = React.useState(null);
+  const [partBladeOpen, setPartBladeOpen] = React.useState(false);
 
   const handleServiceClick = (service) => {
     setSelectedService(service);
@@ -132,6 +163,16 @@ export default function Transactions(props) {
   const handleBladeClose = () => {
     setBladeOpen(false);
     setSelectedService(null);
+  };
+
+  const handlePartClick = (part) => {
+    setSelectedPart({...part, car_title: order?.car.title});
+    setPartBladeOpen(true);
+  };
+
+  const handlePartBladeClose = () => {
+    setPartBladeOpen(false);
+    setSelectedPart(null);
   };
 
   const handleServiceUpdate = async (updates) => {
@@ -152,12 +193,52 @@ export default function Transactions(props) {
     }
   };
 
+  const handlePartUpdate = async (updates) => {
+    if (!selectedPart) return;
+    
+    try {
+      await firebase.firestore().collection('parts').doc(selectedPart.id).update(updates);
+      
+      // Update local state
+      const updatedTransactions = transactions.map(t => 
+        t.id === selectedPart.id ? { ...t, ...updates } : t
+      );
+      setTransactions(updatedTransactions);
+      setSelectedPart({ ...selectedPart, ...updates });
+    } catch (error) {
+      console.error('Error updating part:', error);
+      StateManager.setAlertAndOpen('Error updating part', 'error');
+    }
+  };
+
+  const handlePartDelete = async () => {
+    if (!selectedPart) return;
+    
+    try {
+      await firebase.firestore().collection('parts').doc(selectedPart.id).delete();
+      
+      // Remove from local state
+      const updatedTransactions = transactions.filter(t => t.id !== selectedPart.id);
+      setTransactions(updatedTransactions);
+      
+      // Close the blade
+      handlePartBladeClose();
+      
+      StateManager.setAlertAndOpen('Part deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting part:', error);
+      StateManager.setAlertAndOpen('Error deleting part', 'error');
+    }
+  };
+
   // if(items.length <= 0) return <Loading />
 
   const rows = transactions.sort(sorter[type]).map(transaction => {
-    const row = makeObject(transaction, type, {transactions, setTransactions, stockNumber});
+    const row = makeObject(transaction, type, {transactions, setTransactions, stockNumber, theme});
     if (type === 'services') {
       row.rowAction = () => handleServiceClick(transaction);
+    } else if (type === 'parts') {
+      row.rowAction = () => handlePartClick(transaction);
     }
     return row;
   });
@@ -173,6 +254,7 @@ export default function Transactions(props) {
   };
 
   const [addServiceOpen, setAddServiceOpen] = React.useState(false);
+  const [addPartOpen, setAddPartOpen] = React.useState(false);
 
   const updateSO = (newServices) => {
     // Ensure newServices is an array
@@ -194,14 +276,48 @@ export default function Transactions(props) {
     setTransactions(newTransactions);
   }
 
+  const handlePartAdded = async () => {
+    // Only proceed if we have a stock number
+    if (!stockNumber) return;
+    
+    // Refresh the parts data from the database
+    try {
+      const snapshot = await firebase.firestore()
+        .collection('parts')
+        .where('order', '==', stockNumber)
+        .get();
+
+      if (!snapshot.empty) {
+        const partsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        // Update local state with new parts
+        setTransactions(partsData);
+      } else {
+        // If no parts found, set empty array
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error('Error refreshing parts:', error);
+      StateManager.setAlertAndOpen('Error refreshing parts data', 'error');
+    }
+  }
+
   const onClick = (e) => {
     e.stopPropagation();
-
 
     if(type === "services"){
       setAddServiceOpen(true);
       return;
     }
+    
+    if(type === "parts"){
+      setAddPartOpen(true);
+      return;
+    }
+    
     const url = new URL(window.location.href)
     const redirect = url.pathname;
     const tab = url.searchParams.get("tab");
@@ -218,12 +334,27 @@ export default function Transactions(props) {
         <SimpleTable {...tableData} linkLocation="_self" sorted omit={omit}/>
       </Grid>
       <Grid item xs={12}>
-        <Button disabled={disabled} variant="contained" color="primary" onClick={onClick}>
+        <Button 
+          disabled={disabled || (type === "parts" && !order?.car)} 
+          variant="contained" 
+          color="primary" 
+          onClick={onClick}
+        >
           Add {StateManager.formatTitle(type.slice(0, -1))}
         </Button>
       </Grid>
 
       <AddServiceOrderDialog serviceOrderId={stockNumber} open={addServiceOpen} onClose={() => setAddServiceOpen(false)} callback={updateSO} />
+
+      <OrderPartDialog 
+        open={addPartOpen} 
+        onClose={() => setAddPartOpen(false)} 
+        order={{ 
+          id: stockNumber, 
+          car_title: order?.car?.title || order?.car?.stock || 'Vehicle' 
+        }}
+        onSuccess={handlePartAdded}
+      />
 
       {type === 'services' && (
         <Blade open={bladeOpen} onClose={handleBladeClose} title="Edit Service">
@@ -231,6 +362,20 @@ export default function Transactions(props) {
             <ServiceEditForm 
               service={selectedService} 
               onUpdate={handleServiceUpdate}
+            />
+          )}
+        </Blade>
+      )}
+
+      {type === 'parts' && (
+        <Blade open={partBladeOpen} onClose={handlePartBladeClose} title="Edit Part">
+          {selectedPart && (
+            <PartEditForm 
+              part={selectedPart} 
+              onUpdate={handlePartUpdate}
+              onDelete={handlePartDelete}
+              onCancel={handlePartBladeClose}
+              onSubmit={handlePartBladeClose}
             />
           )}
         </Blade>
@@ -274,12 +419,72 @@ const makeObject = (transaction, type, params = {}) => {
       ...transaction,
       cost: transaction.cost || 0,
       status: StateManager.formatTitle(transaction.status || ""),
-      statusSelector: <SelectItem key={`status-${transaction.id}`} item={transaction} type={type} fieldKey="status" />,
+      vendor: (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: transaction.vendor ? 'text.primary' : 'text.secondary',
+            fontStyle: transaction.vendor ? 'normal' : 'italic'
+          }}
+        >
+          {transaction.vendor || 'Not specified'}
+        </Typography>
+      ),
+      name: (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: 'text.primary'
+          }}
+        >
+          {transaction.name || 'Unnamed Part'}
+        </Typography>
+      ),
+      partNumber: (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: transaction.partNumber ? 'text.primary' : 'text.secondary',
+            fontStyle: transaction.partNumber ? 'normal' : 'italic',
+            fontSize: '0.875rem'
+          }}
+        >
+          {transaction.partNumber || 'No part number'}
+        </Typography>
+      ),
+      statusSelector: (
+        <Chip
+          icon={getStatusIcon(transaction.status || 'pending')}
+          label={(transaction.status || 'pending').charAt(0).toUpperCase() + (transaction.status || 'pending').slice(1)}
+          size="small"
+          sx={{
+            bgcolor: alpha(getStatusColor(transaction.status || 'pending', params.theme), 0.1),
+            color: getStatusColor(transaction.status || 'pending', params.theme),
+            border: `1px solid ${alpha(getStatusColor(transaction.status || 'pending', params.theme), 0.3)}`,
+            '& .MuiChip-icon': {
+              color: 'inherit'
+            },
+            '&:hover': {
+              bgcolor: alpha(getStatusColor(transaction.status || 'pending', params.theme), 0.2),
+              border: `1px solid ${alpha(getStatusColor(transaction.status || 'pending', params.theme), 0.5)}`,
+            }
+          }}
+        />
+      ),
       isArrived:  BinaryIndicator(transaction.status === constants.part_statuses.at(-1)),
-      arrival_date: <SelectDate key={`date-${transaction.id}`} item={transaction} type={type} fieldKey="arrivalDate" />,
+      arrival_date: (
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: transaction.arrivalDate ? 'text.primary' : 'text.secondary',
+            fontStyle: transaction.arrivalDate ? 'normal' : 'italic'
+          }}
+        >
+          {transaction.arrivalDate ? moment(transaction.arrivalDate, 'YYYY/MM/DD').format('MMM DD, YYYY') : 'Not set'}
+        </Typography>
+      ),
       href:  LinkButton(transaction),
       actions: Actions(transaction, {...params, type}),
-      rowLink: `/part/${transaction.id}`,
     }
   }
 
@@ -423,6 +628,11 @@ const syncInspection = async (transaction, updater) => {
 };
 
 const LinkButton = (part) => {
+  // Only show the button if there's a link
+  if (!part.link) {
+    return null;
+  }
+
   const onClick = (e) => {
     e.stopPropagation();
     window.open(part.link, "_blank");

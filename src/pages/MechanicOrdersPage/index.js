@@ -30,6 +30,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
 } from '@mui/material';
 import { useHistory } from 'react-router-dom';
 import BuildIcon from '@mui/icons-material/Build';
@@ -41,6 +45,8 @@ import WarningIcon from '@mui/icons-material/Warning';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import PrintIcon from '@mui/icons-material/Print';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
@@ -51,6 +57,7 @@ import constants from '../../utilities/constants';
 import Blade from '../../components/Blade';
 import ServicesBlade from './ServicesBlade';
 import PartsBlade from './PartsBlade';
+import OrderPartDialog from '../../components/OrderPartDialog';
 
 const MechanicReadyOrdersPage = () => {
   StateManager.setTitle(`${StateManager.mechanicName}'s Service Orders`);
@@ -65,7 +72,6 @@ const MechanicReadyOrdersPage = () => {
   const [selectedOrderForParts, setSelectedOrderForParts] = useState(null);
   const [metrics, setMetrics] = useState({
     estimate: 0,
-    parts: 0,
     ready: 0,
     working: 0,
     currentPeriodHours: 0
@@ -76,8 +82,16 @@ const MechanicReadyOrdersPage = () => {
   
   // Date range state for current period hours
   const [dateRangeDialogOpen, setDateRangeDialogOpen] = useState(false);
-  const [startDate, setStartDate] = useState(moment().startOf('week'));
-  const [endDate, setEndDate] = useState(moment().endOf('week'));
+  const [startDate, setStartDate] = useState(moment());
+  const [endDate, setEndDate] = useState(moment());
+
+  // Order Part Dialog State
+  const [orderPartDialogOpen, setOrderPartDialogOpen] = useState(false);
+
+  // Completed Services Overlay State
+  const [completedServicesOverlayOpen, setCompletedServicesOverlayOpen] = useState(false);
+  const [completedServices, setCompletedServices] = useState([]);
+  const [completedServicesLoading, setCompletedServicesLoading] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -146,6 +160,179 @@ const MechanicReadyOrdersPage = () => {
     setDateRangeDialogOpen(false);
   };
 
+  const fetchCompletedServices = async () => {
+    setCompletedServicesLoading(true);
+    try {
+      if (!selectedMechanic) {
+        setCompletedServices([]);
+        return;
+      }
+
+      const startDateStr = startDate.format('YYYY/MM/DD');
+      const endDateStr = endDate.format('YYYY/MM/DD');
+
+      const query = firebase.firestore()
+        .collection('services')
+        .where('mechanicID', '==', selectedMechanic)
+        .where('status', '==', 'complete')
+        .where('status_time', '>=', startDateStr)
+        .where('status_time', '<=', endDateStr);
+
+      const snapshot = await query.get();
+      console.log(snapshot.docs.length);
+      
+      const servicesData = await Promise.all(snapshot.docs.map(async (doc) => {
+        const service = doc.data();
+        
+        // Fetch order data for car information
+        let orderData = null;
+        if (service.order) {
+          const orderSnapshot = await firebase.firestore()
+            .doc(`orders/${service.order}`)
+            .get();
+
+          if (!orderSnapshot.empty) {
+            const order = orderSnapshot.data();
+            
+            // Fetch car data
+            if (order.car) {
+              const carSnapshot = await firebase.firestore()
+                .doc(`cars/${order.car}`)
+                .get();
+
+              if (!carSnapshot.empty) {
+                const car = carSnapshot.data();
+                orderData = {
+                  car_title: `${car.stock} - ${car.year} ${car.make} ${car.model}${car.trim ? ` ${car.trim}` : ''}`,
+                };
+              }
+            }
+          }
+        }
+
+        return {
+          id: doc.id,
+          ...service,
+          ...(orderData || {}),
+          completedDate: service.status_time,
+          hours: parseFloat(service.time) || 0
+        };
+      }));
+
+      // Sort by completion date (most recent first)
+      servicesData.sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate));
+      
+      setCompletedServices(servicesData);
+    } catch (error) {
+      console.error('Error fetching completed services:', error);
+      setCompletedServices([]);
+    } finally {
+      setCompletedServicesLoading(false);
+    }
+  };
+
+  const handleViewCompletedServices = () => {
+    setCompletedServicesOverlayOpen(true);
+    fetchCompletedServices();
+  };
+
+  const handlePrintCompletedServices = () => {
+    const mechanicName = constants.mechanics.find(m => m.id === selectedMechanic)?.name || StateManager.mechanicName;
+    const totalHours = completedServices.reduce((sum, service) => sum + service.hours, 0);
+    
+    const printContent = `
+      <html>
+        <head>
+          <title>Completed Services Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .summary { margin-bottom: 30px; padding: 15px; background-color: #f5f5f5; border-radius: 5px; }
+            .summary h3 { margin: 0 0 10px 0; }
+            .summary p { margin: 5px 0; font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .service-description { max-width: 300px; word-wrap: break-word; }
+            .hours { text-align: center; }
+            .date { text-align: center; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Completed Services Report</h1>
+            <h2>${mechanicName}</h2>
+            <p>Period: ${startDate.format('MMM D, YYYY')} - ${endDate.format('MMM D, YYYY')}</p>
+          </div>
+          
+          <div class="summary">
+            <h3>Summary</h3>
+            <p><strong>Total Services Completed:</strong> ${completedServices.length}</p>
+            <p><strong>Total Hours:</strong> ${totalHours.toFixed(1)}</p>
+            <p><strong>Date Range:</strong> ${startDate.format('MMM D, YYYY')} - ${endDate.format('MMM D, YYYY')}</p>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>SO #</th>
+                <th>Car</th>
+                <th>Service Description</th>
+                <th>Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${completedServices.map(service => `
+                <tr>
+                  <td class="date">${moment(service.completedDate).format('MMM D, YYYY')}</td>
+                  <td>${service.order || 'N/A'}</td>
+                  <td>${service.car_title || 'N/A'}</td>
+                  <td class="service-description">${service.name || 'N/A'}</td>
+                  <td class="hours">${service.hours.toFixed(1)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <!-- Manager Approval Section -->
+          <div style="margin-top: 40px; border-top: 2px solid #333; padding-top: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+              <div style="flex: 1; margin-right: 40px;">
+                <div style="border-bottom: 1px solid #333; height: 30px; margin-bottom: 5px;"></div>
+                <p style="margin: 0; font-size: 14px; color: #666;">Mechanic Name (Print)</p>
+              </div>
+              <div style="flex: 1; margin-right: 40px;">
+                <div style="border-bottom: 1px solid #333; height: 30px; margin-bottom: 5px;"></div>
+                <p style="margin: 0; font-size: 14px; color: #666;">Mechanic Signature</p>
+              </div>
+              <div style="flex: 1;">
+                <div style="border-bottom: 1px solid #333; height: 30px; margin-bottom: 5px;"></div>
+                <p style="margin: 0; font-size: 14px; color: #666;">Date</p>
+              </div>
+            </div>
+            <div style="margin-top: 20px; padding: 15px; background-color: #f9f9f9; border-radius: 5px; border: 1px solid #ddd;">
+              <p style="margin: 0; font-size: 14px; color: #666; font-style: italic;">
+                I hereby approve the above completed services and hours for ${mechanicName} during the period ${startDate.format('MMM D, YYYY')} - ${endDate.format('MMM D, YYYY')}.
+              </p>
+            </div>
+          </div>
+          
+          <div class="no-print" style="margin-top: 30px; text-align: center;">
+            <button onclick="window.print()">Print Report</button>
+            <button onclick="window.close()">Close</button>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+  };
+
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -153,7 +340,6 @@ const MechanicReadyOrdersPage = () => {
         setLoading(false);
         setMetrics(prev => ({
           estimate: 0,
-          parts: 0,
           ready: 0,
           working: 0,
           currentPeriodHours: prev.currentPeriodHours
@@ -164,7 +350,7 @@ const MechanicReadyOrdersPage = () => {
       const query = firebase.firestore()
         .collection('orders')
         .where('mechanicId', '==', selectedMechanic)
-        .where('status', 'in', ['estimate', 'parts', 'ready', 'working']);
+        .where('status', 'in', ['estimate', 'ready', 'working']);
 
       const snapshot = await query.get();
       
@@ -172,7 +358,6 @@ const MechanicReadyOrdersPage = () => {
         setOrders([]);
         setMetrics(prev => ({
           estimate: 0,
-          parts: 0,
           ready: 0,
           working: 0,
           currentPeriodHours: prev.currentPeriodHours
@@ -250,7 +435,6 @@ const MechanicReadyOrdersPage = () => {
       // Calculate metrics
       const newMetrics = {
         estimate: ordersData.filter(o => o.status === 'estimate').length,
-        parts: ordersData.filter(o => o.status === 'parts').length,
         ready: ordersData.filter(o => o.status === 'ready').length,
         working: ordersData.filter(o => o.status === 'working').length,
         currentPeriodHours: 0
@@ -346,7 +530,6 @@ const MechanicReadyOrdersPage = () => {
           <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
             <Box display="flex" alignItems="center">
               {status === 'estimate' && <AssessmentIcon sx={{ mr: 1, color: color, fontSize: 20 }} />}
-              {status === 'parts' && <InventoryIcon sx={{ mr: 1, color: color, fontSize: 20 }} />}
               {status === 'ready' && <CheckCircleIcon sx={{ mr: 1, color: color, fontSize: 20 }} />}
               {status === 'working' && <BuildIcon sx={{ mr: 1, color: color, fontSize: 20 }} />}
               <Typography variant="subtitle1" sx={{ color: isActive ? color : 'inherit' }}>
@@ -392,7 +575,7 @@ const MechanicReadyOrdersPage = () => {
   const handleMenuClose = (event) => {
     event?.stopPropagation(); // Prevent row click
     setMenuAnchorEl(null);
-    setSelectedOrderForMenu(null);
+    // setSelectedOrderForMenu(null);
   };
 
   const handleViewServices = (event) => {
@@ -407,6 +590,12 @@ const MechanicReadyOrdersPage = () => {
     handleMenuClose();
     setSelectedOrderForParts(selectedOrderForMenu);
     setPartsBladeOpen(true);
+  };
+
+  const handleOrderPart = (event) => {
+    event.stopPropagation();
+    handleMenuClose();
+    setOrderPartDialogOpen(true);
   };
 
   if (!StateManager.mechanicId) {
@@ -424,7 +613,7 @@ const MechanicReadyOrdersPage = () => {
   return (
     <Container maxWidth="lg" style={{ marginTop: '2rem' }}>
       {/* Mechanic Selector for Admin */}
-      {StateManager.isAdmin() && (
+      {StateManager.isBackoffice() && (
         <Paper 
           sx={{ 
             p: 2, 
@@ -492,7 +681,7 @@ const MechanicReadyOrdersPage = () => {
                   gap: 1.5
                 }}>
                   <TimelineIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
-                  <Box>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                       <Typography variant="body2" color="text.secondary">
                         Current Period Hours
@@ -519,6 +708,29 @@ const MechanicReadyOrdersPage = () => {
                         : `${startDate.format('MMM D')} - ${endDate.format('MMM D, YYYY')}`
                       }
                     </Typography>
+                    <Box sx={{ flexGrow: 1 }} />
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<VisibilityIcon />}
+                        onClick={handleViewCompletedServices}
+                        sx={{ 
+                          fontSize: '0.75rem',
+                          py: 0.5,
+                          px: 1.5,
+                          minWidth: 'auto',
+                          borderColor: alpha(theme.palette.primary.main, 0.3),
+                          color: theme.palette.primary.main,
+                          '&:hover': {
+                            borderColor: theme.palette.primary.main,
+                            bgcolor: alpha(theme.palette.primary.main, 0.05)
+                          }
+                        }}
+                      >
+                        View Services
+                      </Button>
+                    </Box>
                   </Box>
                 </Box>
               </Grid>
@@ -535,7 +747,7 @@ const MechanicReadyOrdersPage = () => {
                       Active Orders
                     </Typography>
                     <Typography variant="h6" color="info.main" sx={{ fontWeight: 'bold' }}>
-                      {metrics.estimate + metrics.working + metrics.ready + metrics.parts}
+                      {metrics.estimate + metrics.working + metrics.ready}
                     </Typography>
                   </Box>
                 </Box>
@@ -543,30 +755,23 @@ const MechanicReadyOrdersPage = () => {
             </Grid>
           </Paper>
 
-          {/* Metrics Cards */}
+                    {/* Metrics Cards */}
           <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={4}>
               <MetricCard 
                 status="estimate" 
                 count={metrics.estimate} 
                 color={getStatusColor('estimate')} 
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <MetricCard 
-                status="parts" 
-                count={metrics.parts} 
-                color={getStatusColor('parts')} 
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={4}>
               <MetricCard 
                 status="ready" 
                 count={metrics.ready} 
                 color={getStatusColor('ready')} 
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={4}>
               <MetricCard 
                 status="working" 
                 count={metrics.working} 
@@ -692,7 +897,6 @@ const MechanicReadyOrdersPage = () => {
                         }}
                       >
                         {order.status === 'estimate' && <AssessmentIcon sx={{ fontSize: 20 }} />}
-                        {order.status === 'parts' && <InventoryIcon sx={{ fontSize: 20 }} />}
                         {order.status === 'ready' && <CheckCircleIcon sx={{ fontSize: 20 }} />}
                         {order.status === 'working' && <BuildIcon sx={{ fontSize: 20 }} />}
                         <Typography>
@@ -727,9 +931,7 @@ const MechanicReadyOrdersPage = () => {
                           {activeStatus ? `No ${activeStatus} orders found` : 'No orders found'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {activeStatus === 'parts' ? 
-                            "No orders waiting for parts - contact service manager or Max if you need parts ordered" :
-                            activeStatus === 'ready' ?
+                          {activeStatus === 'ready' ?
                             "No ready orders - contact service manager or Max if you need work assigned" :
                             activeStatus === 'working' ?
                             "No working orders - contact service manager or Max if you need work assigned" :
@@ -751,6 +953,7 @@ const MechanicReadyOrdersPage = () => {
           >
             <MenuItem onClick={handleViewServices}>View services</MenuItem>
             <MenuItem onClick={handleViewParts}>View parts</MenuItem>
+            <MenuItem onClick={handleOrderPart}>Order part</MenuItem>
           </Menu>
 
           <Blade
@@ -780,6 +983,165 @@ const MechanicReadyOrdersPage = () => {
               />
             )}
           </Blade>
+
+          <OrderPartDialog
+            open={orderPartDialogOpen}
+            onClose={() => setOrderPartDialogOpen(false)}
+            order={selectedOrderForMenu}
+          />
+
+          {/* Completed Services Overlay */}
+          <Dialog
+            open={completedServicesOverlayOpen}
+            onClose={() => setCompletedServicesOverlayOpen(false)}
+            maxWidth="lg"
+            fullWidth
+            PaperProps={{
+              sx: { maxHeight: '90vh' }
+            }}
+          >
+            <DialogTitle>
+              <Box display="flex" alignItems="center" justifyContent="space-between">
+                <Box display="flex" alignItems="center" gap={1}>
+                  <TimelineIcon sx={{ color: theme.palette.primary.main }} />
+                  <Typography variant="h6">
+                    Completed Services Report
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrintCompletedServices}
+                  sx={{ minWidth: 'auto' }}
+                >
+                  Print
+                </Button>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {constants.mechanics.find(m => m.id === selectedMechanic)?.name || StateManager.mechanicName} • 
+                {startDate.isSame(endDate, 'day') 
+                  ? ` ${startDate.format('MMM D, YYYY')}`
+                  : ` ${startDate.format('MMM D')} - ${endDate.format('MMM D, YYYY')}`
+                }
+              </Typography>
+            </DialogTitle>
+            <DialogContent>
+              {completedServicesLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                  <CircularProgress />
+                </Box>
+              ) : completedServices.length === 0 ? (
+                <Box display="flex" flexDirection="column" alignItems="center" gap={2} py={4}>
+                  <WarningIcon sx={{ fontSize: 48, color: theme.palette.warning.main }} />
+                  <Typography variant="h6" color="text.secondary">
+                    No completed services found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    No services were completed by {constants.mechanics.find(m => m.id === selectedMechanic)?.name || StateManager.mechanicName} during the selected period.
+                  </Typography>
+                </Box>
+              ) : (
+                <>
+                  {/* Summary Cards */}
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid item xs={12} sm={4}>
+                      <Card sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h4" color="info.main" sx={{ fontWeight: 'bold' }}>
+                            {completedServices.length}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Services Completed
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Card sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
+                            {completedServices.reduce((sum, service) => sum + service.hours, 0).toFixed(1)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Total Hours
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Card sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}` }}>
+                        <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                          <Typography variant="h4" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                            {(completedServices.reduce((sum, service) => sum + service.hours, 0) / Math.max(1, moment(endDate).diff(moment(startDate), 'days') + 1)).toFixed(1)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            Average Hours/Day
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  </Grid>
+
+                  {/* Services List */}
+                  <TableContainer component={Paper} variant="outlined">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Date Completed</TableCell>
+                          <TableCell>SO #</TableCell>
+                          <TableCell>Car</TableCell>
+                          <TableCell>Service Description</TableCell>
+                          <TableCell align="center">Hours</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {completedServices.map((service) => (
+                          <TableRow key={service.id} hover>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                                {moment(service.completedDate).format('MMM D, YYYY')}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'medium' }}>
+                                {service.order || 'N/A'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {service.car_title || 'N/A'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body2">
+                                {service.name || 'N/A'}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="center">
+                              <Chip
+                                label={`${service.hours.toFixed(1)}h`}
+                                size="small"
+                                sx={{
+                                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                  color: theme.palette.primary.main,
+                                  fontWeight: 'medium'
+                                }}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCompletedServicesOverlayOpen(false)} color="inherit">
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
         </>
       )}
 

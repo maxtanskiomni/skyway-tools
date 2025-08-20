@@ -29,6 +29,8 @@ import Backdrop from '@mui/material/Backdrop';
 import ResultsList from './ResultsList';
 import AddCarDialog from './AddCarDialog';
 import AddServiceOrderDialog from './AddServiceOrderDialog';
+import AddCustomerDialog from './AddCustomerDialog';
+import AddLeadDialog from './AddLeadDialog';
 import {
   ListItemIcon,
   ListItemText,
@@ -52,6 +54,8 @@ export default function Header(props) {
     const [selected, setSelected] = React.useState(0);
     const [isAddCarDialogOpen, setIsAddCarDialogOpen] = React.useState(false);
     const [isAddServiceOrderDialogOpen, setIsAddServiceOrderDialogOpen] = React.useState(false);
+    const [isAddCustomerDialogOpen, setIsAddCustomerDialogOpen] = React.useState(false);
+    const [isAddLeadDialogOpen, setIsAddLeadDialogOpen] = React.useState(false);
 
     const hendleOpen = (event) => {
       console.log('open')
@@ -210,6 +214,11 @@ export default function Header(props) {
       handleClose();
     }
 
+    const addCustomer = () => {
+      setIsAddCustomerDialogOpen(true);
+      handleClose();
+    }
+
     const handleAction = (action) => {
       switch (action) {
         case 'addCar':
@@ -217,6 +226,12 @@ export default function Header(props) {
           break;
         case 'addServiceOrder':
           setIsAddServiceOrderDialogOpen(true);
+          break;
+        case 'addCustomer':
+          setIsAddCustomerDialogOpen(true);
+          break;
+        case 'addLead':
+          setIsAddLeadDialogOpen(true);
           break;
         case 'signOut':
           firebase.auth().signOut();
@@ -296,6 +311,20 @@ export default function Header(props) {
       <AddServiceOrderDialog
         open={isAddServiceOrderDialogOpen}
         onClose={() => setIsAddServiceOrderDialogOpen(false)}
+      />
+
+      <AddCustomerDialog
+        open={isAddCustomerDialogOpen}
+        onClose={() => setIsAddCustomerDialogOpen(false)}
+      />
+
+      <AddLeadDialog
+        open={isAddLeadDialogOpen}
+        onClose={() => setIsAddLeadDialogOpen(false)}
+        onSuccess={(leadId) => {
+          console.log('Lead added successfully:', leadId);
+          // Optionally refresh data or navigate to leads page
+        }}
       />
     </>;
   }

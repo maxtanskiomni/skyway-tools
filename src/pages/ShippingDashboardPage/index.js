@@ -25,7 +25,11 @@ import {
   DialogActions,
   Button,
   IconButton,
-  Tooltip
+  Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from '@mui/material';
 import { useHistory } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
@@ -51,6 +55,8 @@ const ShippingDashboardPage = () => {
   const [loads, setLoads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [driverFilter, setDriverFilter] = useState('');
+  const [availableDrivers, setAvailableDrivers] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [metrics, setMetrics] = useState({
@@ -69,7 +75,7 @@ const ShippingDashboardPage = () => {
     const now = moment();
     return moment(now).endOf('month');
   });
-  const [dateType, setDateType] = useState('created_at'); // 'created_at' or 'completed_at'
+  const [dateType, setDateType] = useState('created_at'); // 'created_at', 'completed_at', or 'departure_date'
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
   const fetchLoads = async (isInitial = false) => {
@@ -158,6 +164,39 @@ const ShippingDashboardPage = () => {
     return revenue - cost;
   };
 
+  const extractDestinationStates = (load) => {
+    if (!load.cars || !Array.isArray(load.cars)) return [];
+    
+    // List of valid US state abbreviations
+    const validStates = [
+      'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+      'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+      'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+      'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+      'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+    ];
+    
+    const states = new Set();
+    load.cars.forEach(car => {
+      if (car.address) {
+        // Extract state from address using regex to find 2-letter uppercase codes
+        const stateRegex = /\b([A-Z]{2})\b/g;
+        const matches = car.address.match(stateRegex);
+        
+        if (matches) {
+          matches.forEach(match => {
+            // Only add if it's a valid US state
+            if (validStates.includes(match)) {
+              states.add(match);
+            }
+          });
+        }
+      }
+    });
+    
+    return Array.from(states).sort();
+  };
+
   const fetchMetrics = async () => {
     try {
       let query = firebase.firestore()
@@ -207,6 +246,14 @@ const ShippingDashboardPage = () => {
         totalRevenue,
         totalProfit
       });
+
+      // Extract unique drivers for the filter
+      const drivers = [...new Set(loadsWithPurchases
+        .map(load => load.driver)
+        .filter(driver => driver && driver.trim())
+        .sort()
+      )];
+      setAvailableDrivers(drivers);
     } catch (error) {
       console.error('Error fetching metrics:', error);
     }
@@ -220,6 +267,11 @@ const ShippingDashboardPage = () => {
     fetchMetrics();
   }, [startDate, endDate, dateType]);
 
+  // Reset driver filter when date filters change
+  useEffect(() => {
+    setDriverFilter('');
+  }, [startDate, endDate, dateType]);
+
   const handleScroll = (e) => {
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     if (scrollHeight - scrollTop <= clientHeight * 1.5 && !loading && hasMore) {
@@ -228,14 +280,18 @@ const ShippingDashboardPage = () => {
   };
 
   const filteredLoads = loads.filter(load => {
+    // Apply driver filter first
+    if (driverFilter.trim() && (!load.driver || !load.driver.toLowerCase().includes(driverFilter.toLowerCase()))) {
+      return false;
+    }
+    
     if (!searchQuery.trim()) return true;
     
     const searchLower = searchQuery.toLowerCase();
     
-    // Search in load basic info
+    // Search in load basic info (excluding driver since it's handled by driverFilter)
     const loadMatches = 
       load.id.toLowerCase().includes(searchLower) ||
-      (load.driver && load.driver.toLowerCase().includes(searchLower)) ||
       (load.start && load.start.toLowerCase().includes(searchLower)) ||
       (load.end && load.end.toLowerCase().includes(searchLower)) ||
       (load.status && load.status.toLowerCase().includes(searchLower)) ||
@@ -264,6 +320,14 @@ const ShippingDashboardPage = () => {
       });
       
       if (carMatches) return true;
+      
+      // Search in destination states
+      const destinationStates = extractDestinationStates(load);
+      const stateMatches = destinationStates.some(state => 
+        state.toLowerCase().includes(searchLower)
+      );
+      
+      if (stateMatches) return true;
     }
     
     return false;
@@ -461,9 +525,17 @@ const ShippingDashboardPage = () => {
           gap: 2
         }}>
           <TextField
-            fullWidth
+            sx={{
+              flex: 1,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: alpha(theme.palette.background.paper, 0.6),
+                '&:hover': {
+                  backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                },
+              },
+            }}
             variant="outlined"
-            placeholder="Search loads, drivers, cars, addresses, VINs, or any details..."
+            placeholder="Search loads, cars, addresses, VINs, or any details..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
@@ -473,15 +545,30 @@ const ShippingDashboardPage = () => {
                 </InputAdornment>
               ),
             }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
+          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Driver</InputLabel>
+            <Select
+              value={driverFilter}
+              onChange={(e) => setDriverFilter(e.target.value)}
+              label="Driver"
+              sx={{
                 backgroundColor: alpha(theme.palette.background.paper, 0.6),
                 '&:hover': {
                   backgroundColor: alpha(theme.palette.background.paper, 0.8),
                 },
-              },
-            }}
-          />
+              }}
+            >
+              <MenuItem value="">
+                <em>All Drivers</em>
+              </MenuItem>
+              {availableDrivers.map((driver) => (
+                <MenuItem key={driver} value={driver}>
+                  {driver}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Tooltip title="Filter by date">
             <IconButton
               onClick={() => setIsFilterDialogOpen(true)}
@@ -554,6 +641,9 @@ const ShippingDashboardPage = () => {
               <ToggleButton value="created_at">
                 Creation Date
               </ToggleButton>
+              <ToggleButton value="departure_date">
+                Departure Date
+              </ToggleButton>
               <ToggleButton value="completed_at">
                 Completion Date
               </ToggleButton>
@@ -561,6 +651,25 @@ const ShippingDashboardPage = () => {
 
             <LocalizationProvider dateAdapter={AdapterMoment}>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => {
+                      const today = moment();
+                      setStartDate(today.startOf('day'));
+                      setEndDate(today.endOf('day'));
+                    }}
+                    sx={{
+                      fontSize: '0.75rem',
+                      py: 0.5,
+                      px: 2,
+                      minWidth: 'auto'
+                    }}
+                  >
+                    Today
+                  </Button>
+                </Box>
                 <DatePicker
                   label="Start Date"
                   value={startDate}
@@ -595,6 +704,7 @@ const ShippingDashboardPage = () => {
               setStartDate(null);
               setEndDate(null);
               setDateType('created_at');
+              setDriverFilter('');
             }}
             color="inherit"
           >
@@ -640,9 +750,10 @@ const ShippingDashboardPage = () => {
               <TableCell>Payment Status</TableCell>
               <TableCell>Driver</TableCell>
               <TableCell>Cars</TableCell>
+              <TableCell>Destination States</TableCell>
               <TableCell>Revenue</TableCell>
               <TableCell>Profit</TableCell>
-              <TableCell>Created Date</TableCell>
+              <TableCell>Departure Date</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -782,6 +893,65 @@ const ShippingDashboardPage = () => {
                     </Box>
                   </TableCell>
                   <TableCell>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {(() => {
+                        const states = extractDestinationStates(load);
+                        if (states.length === 0) {
+                          return (
+                            <Typography 
+                              variant="body2"
+                              sx={{ 
+                                color: theme.palette.text.secondary,
+                                fontStyle: 'italic'
+                              }}
+                            >
+                              No destinations
+                            </Typography>
+                          );
+                        }
+                        return (
+                          <>
+                            {states.slice(0, 3).map((state, index) => (
+                              <Typography 
+                                key={index}
+                                variant="body2"
+                                sx={{ 
+                                  color: theme.palette.text.secondary,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 1
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: theme.palette.secondary.main,
+                                    mr: 1
+                                  }}
+                                />
+                                {state}
+                              </Typography>
+                            ))}
+                            {states.length > 3 && (
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  color: theme.palette.primary.main,
+                                  fontWeight: 500,
+                                  mt: 0.5
+                                }}
+                              >
+                                +{states.length - 3} more states
+                              </Typography>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
                     <Typography sx={{ color: theme.palette.text.secondary }}>
                       {revenue > 0 ? `$${revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : 'N/A'}
                     </Typography>
@@ -796,7 +966,7 @@ const ShippingDashboardPage = () => {
                   </TableCell>
                   <TableCell>
                     <Typography sx={{ color: theme.palette.text.secondary }}>
-                      {load.created_at ? new Date(load.created_at).toLocaleDateString() : 'N/A'}
+                      {load.departure_date ? new Date(load.departure_date).toLocaleDateString() : '-'}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -804,7 +974,7 @@ const ShippingDashboardPage = () => {
             })}
             {loading && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>

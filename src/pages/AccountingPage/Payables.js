@@ -61,6 +61,10 @@ export default function Payables(props) {
   rows = rows.filter(data => {
     return !data.isNTO || data.isFunded;
   })
+  .map(x => {
+    if(x.updated_nto && x.isNTO) x.amount = x.updated_nto;
+    return x;
+  })
   .filter(x => defaultFilter(x,term))
   .sort((a, b) => moment(a.date).valueOf() - moment(b.date).valueOf());
 

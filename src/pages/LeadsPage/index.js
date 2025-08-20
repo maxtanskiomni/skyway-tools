@@ -10,7 +10,9 @@ import firebase from '../../utilities/firebase.js';
 import { StateManager } from "../../utilities/stateManager.js";
 import constants from '../../utilities/constants.js';
 import TextLine from '../../components/TextLine.js';
-import { CircularProgress } from '@mui/material';
+import { CircularProgress, Button, Box } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import AddLeadDialog from '../../components/AddLeadDialog.js';
 
 
 let timeout = () => null
@@ -27,6 +29,7 @@ export default function LeadsPage(props) {
   const [term, setTerm] = React.useState(initTerm);
   const [loading, setLoading] = React.useState(false);
   const [payload, setPayload] = React.useState({});
+  const [addLeadDialogOpen, setAddLeadDialogOpen] = React.useState(false);
   StateManager.setTitle("Leads Dashboard");
   const tab = new URL(window.location.href).searchParams.get("tab");
 
@@ -57,7 +60,9 @@ export default function LeadsPage(props) {
             lead.car = car.data();
           }
           else{
-            await db.doc(`leads/${lead.id}`).delete();
+            await db.doc(`leads/${lead.id}`).set({
+              status: "dead",
+            }, { merge: true });
           }
           return lead;
         });     
@@ -134,6 +139,13 @@ export default function LeadsPage(props) {
     StateManager.setLoading(false);
   }
 
+  const handleAddLeadSuccess = (leadId) => {
+    // Refresh the data after adding a new lead
+    if (StateManager.upadteLeads) {
+      StateManager.upadteLeads();
+    }
+  };
+
   return (
     <>
     <Grid style={{padding: 20}}>
@@ -149,7 +161,7 @@ export default function LeadsPage(props) {
             />
             : null
         }
-        <Grid style={{padding: 20}}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <TextLine
             id="filter"
             label={<b style={{paddingLeft: 7}}>Search Leads</b>}
@@ -158,9 +170,23 @@ export default function LeadsPage(props) {
             value={term}
             onChange={updateTerm}
           />
-        </Grid>
+          {/* <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setAddLeadDialogOpen(true)}
+            sx={{ ml: 2 }}
+          >
+            Add Lead
+          </Button> */}
+        </Box>
       </Grid>
       <TabContainer payload={payload} sections={sections}/>
+      
+      <AddLeadDialog
+        open={addLeadDialogOpen}
+        onClose={() => setAddLeadDialogOpen(false)}
+        onSuccess={handleAddLeadSuccess}
+      />
     </>
   );
 }

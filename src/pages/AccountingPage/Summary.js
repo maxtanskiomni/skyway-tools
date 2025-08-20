@@ -24,7 +24,7 @@ export default function Summary(props) {
   const credit = ronChecks.filter(check => moment(check.date).isSameOrBefore(moment())).reduce((a,c) => a + c.amount, 0);
   const checks = otherChecks.filter(check => check.force_vis || moment(check.date).isSameOrBefore(moment())).reduce((a,c) => a + c.amount, 0);
   const nonNTOs = payables.filter(x => !x.isNTO).reduce((a,c) => a + (c.amount || 0), 0);
-  const NTOs = payables.filter(x => x.isNTO && x.isFunded).reduce((a,c) => a + (c.amount || 0), 0);
+  const NTOs = payables.filter(x => x.isNTO && x.isFunded).reduce((a,c) => a + (c.updated_nto || c.amount || 0), 0);
   const LOCs = (summary.seacoastLOCBalance || 0)
   const prepaidAssets = (summary.prepaidAssets || 0)
   // console.log(inventory.filter(x => x.value < 0))

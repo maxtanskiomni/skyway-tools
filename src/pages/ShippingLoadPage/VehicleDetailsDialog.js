@@ -30,6 +30,7 @@ const VehicleDetailsDialog = ({ open, onClose, vehicle, loadId, onUpdateField })
   const [isEditing, setIsEditing] = useState(false);
   const [editedCustomer, setEditedCustomer] = useState(null);
   const [editedVehicle, setEditedVehicle] = useState(null);
+  const [carDetails, setCarDetails] = useState(null);
 
   const handleCopyToClipboard = async (text) => {
     try {
@@ -73,16 +74,32 @@ const VehicleDetailsDialog = ({ open, onClose, vehicle, loadId, onUpdateField })
     }
   };
 
+  const fetchCarDetails = async (carId) => {
+    try {
+      if (!carId) return;
+
+      const doc = await firebase.firestore().collection('cars').doc(carId).get();
+      if (doc.exists) {
+        const data = doc.data();
+        setCarDetails(data);
+      }
+    } catch (error) {
+      console.error('Error fetching car details:', error);
+    }
+  };
+
   useEffect(() => {
     if (vehicle) {
       setEditedVehicle(vehicle);
       fetchCustomerData(vehicle.customerId);
+      fetchCarDetails(vehicle.id);
     }
   }, [vehicle]);
 
   useEffect(() => {
     if (!open) {
       setCustomer(null);
+      setCarDetails(null);
     }
   }, [open]);
 
@@ -292,6 +309,26 @@ const VehicleDetailsDialog = ({ open, onClose, vehicle, loadId, onUpdateField })
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
                       Stop Type: {vehicle.stopType === 'pickup' ? 'Pickup' : 'Dropoff'}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* VIN Display */}
+                {(vehicle.vin || (carDetails && carDetails.vin)) && (
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Typography variant="subtitle1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                        VIN
+                      </Typography>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleCopyToClipboard(vehicle.vin || carDetails?.vin)}
+                      >
+                        <ContentCopyIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                    <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                      {vehicle.vin || carDetails?.vin}
                     </Typography>
                   </Box>
                 )}

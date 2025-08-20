@@ -45,11 +45,19 @@ export default function Inventory(props) {
       )
     );
 
+  const isRon = (car) => {
+    return car.consignor === "4ed13115-1900-41d2-a14d-13f1242dd48a";
+  }
+
+  const isSkyway = (car) => {
+    return car.consignor === "9c0d88f5-84f9-454d-833d-a8ced9adad49";
+  }
+
   const summary = [
     {format: 'usd', label: 'Inventory Value', value: rows.reduce((a,c) => a + (c.value || 0), 0)},
-    {format: 'usd', label: 'Skyway Classics Total', value: rows.filter(x => x.owner === 'Skyway Classics').reduce((a,c) => a + (c.value || 0), 0)},
-    {format: 'usd', label: "Ron's Classic Cars Total", value: rows.filter(x => x.owner === "Ron's Classic Cars").reduce((a,c) => a + (c.value || 0), 0)},
-    {format: 'usd', label: 'Other Consignors', value: rows.filter(x => x.owner && x.owner !== 'Skyway Classics' && x.owner !== "Ron's Classic Cars").reduce((a,c) => a + (c.value || 0), 0)}
+    {format: 'usd', label: 'Skyway Classics Total', value: rows.filter(x => isSkyway(x)).reduce((a,c) => a + (c.value || 0), 0)},
+    {format: 'usd', label: "Ron's Classic Cars Total", value: rows.filter(x => isRon(x)).reduce((a,c) => a + (c.value || 0), 0)},
+    {format: 'usd', label: 'Other Consignors', value: rows.filter(x => !isRon(x) && !isSkyway(x)).reduce((a,c) => a + (c.value || 0), 0)}
   ];
 
   const tableData = {

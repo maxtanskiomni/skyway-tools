@@ -30,19 +30,14 @@ class Constants {
     ];
 
     this.order_statuses = [
-      // 'pending',
       'estimate',
-      // "parts",
       "approval",
-      "parts",
+      // "parts",
       "ready",
-      // "purchasing",
-      // "awaiting parts",
       "working",
       "quality",
       "payment",
       "complete",
-      // "deleted",
     ];
 
     this.lead_statuses = [
@@ -133,6 +128,30 @@ class Constants {
     ]
     .sort();
 
+
+    this.consignors = [
+      "Alan Tanski",
+      "Shane Hale",
+      "Bobby Chestnut",
+      "Ryan Tanski",
+      "Mark Tanski",
+      "Kurt Johnston",
+      "Max Tanski",
+      "Trent Ashley"
+    ].sort();
+
+    this.sales_team = [
+      "Alan Tanski",
+      "Bobby Chestnut",
+      "Shane Hale",
+      "Ryan Tanski",
+      "Mark Tanski",
+      "Kurt Johnston",
+      "Max Tanski",
+      "Trent Ashley",
+      "Team Tanski"
+    ].sort();
+
     this.timeCodes = [
       {value: "WS|admin labor", label: "Admin"},
       {value: "WS|general break", label: "Break"},
@@ -206,19 +225,19 @@ class Constants {
       "8zj1gUmxaxSUE7suolaqaQUHkmE2": "Sallie Suski",
       "STEVEN_AIENA": "Steven Aiena",
       "ROBERT_PANICO": "Robert Panico",
-      "ENRIQUE_ACOSTA": "Enrique Acosta",
+      // "ENRIQUE_ACOSTA": "Enrique Acosta",
     }
 
     this.mechanics = [
       {name: "Placeholder", rate: 35, cat:"INVR", id: "test"},
       // {name: "Alex Literal", rate: 30, cat:"INVR", id: "ckFJCBv5bDXXZ4sD6umwmErwCqw1"},
-      {name: "Augstin Ortiz", rate: 42, cat:"INVR", id: "FXbkDzwrCVeEda2g2bxPEJLfIFD2"},
+      {name: "Augstin Ortiz", rate: 45, cat:"INVR", id: "FXbkDzwrCVeEda2g2bxPEJLfIFD2"},
       {name: "Mack Besser", rate: 40, cat:"INVR", id: "HwxpinJD5vgatCaQ3ntyNImPP282"},
       {name: "Jovani Ortiz", rate: 25, cat:"INVR", id: "MOXC0qR6b8NSZYZ3Lw5oCQtkHj72"},
-      {name: "John Uciechowski", rate: 42, cat:"INVR", id: "9uhA796j8ShEmIQjFSd7PFxsK4t2"},
+      {name: "John Uciechowski", rate: 50, cat:"INVR", id: "9uhA796j8ShEmIQjFSd7PFxsK4t2"},
       {name: "Steven Aiena", rate: 50, cat:"INVR", id: "STEVEN_AIENA"},
       {name: "Robert Panico", rate: 50, cat:"INVR", id: "ROBERT_PANICO"},
-      {name: "Enrique Acosta", rate: 40, cat:"INVR", id: "ENRIQUE_ACOSTA"},
+      // {name: "Enrique Acosta", rate: 40, cat:"INVR", id: "ENRIQUE_ACOSTA"},
       // {name: "Mark Proveaux", rate: 35, cat:"INVR", id: "lwd7yHbNZGSFrB3h4f9504fhXyW2"},
       // {name: "Jayme Spencer", rate: 30, cat:"INVR", id: "q6OmXvcDOWdBv6lxs41MXpQRgfm1"},
       // {name: "Jhonner Caldera", rate: 40, cat:"INVR", id: "3"},
@@ -234,9 +253,9 @@ class Constants {
       {name: "Alan Tanski", id: "QaTeMXR0TJcK9L80VTjBo60WpTt2"},
       {name: "Shane Hale", id: "6u10jX0cGzcEBVq2sUpfd0O3hq42"},
       // {name: "Roy Coleman", id: "vFtENZjY6dWiMr5m3qCFqAQIy8v2"},
-      {name: "Bobby Chestnut", id: "jaeuSSDch5cuGQztaD7RhZ3acv33"},
+      // {name: "Bobby Chestnut", id: "jaeuSSDch5cuGQztaD7RhZ3acv33"},
       {name: "Ryan Tanski", id: "W597JhoCdAX26Xxe52BRQcn7hTP2"},
-      {name: "Sallie Grace", id: "8zj1gUmxaxSUE7suolaqaQUHkmE2"},
+      // {name: "Sallie Grace", id: "8zj1gUmxaxSUE7suolaqaQUHkmE2"},
       // {name: "Ray Jenkins", id: "ESXGyJliPDQkVvSAewGAAWJWteG3"},
     ].sort((a,b) => a.name.split(" ").slice(-1) >= b.name.split(" ").slice(-1) ? 1 : -1);
 
@@ -244,7 +263,7 @@ class Constants {
       "Placeholder",
       // "Alex Literal",
       "Augstin Ortiz",
-      "Enrique Acosta",
+      // "Enrique Acosta",
       "Mack Besser",
       "Jovani Ortiz",
       "John Uciechowski",
@@ -257,7 +276,7 @@ class Constants {
       // "Rob Powell",
       // "Mark Proveaux",
       // "Joe Clouse",
-      "Walter Lansing"
+      // "Walter Lansing"
     ];
 
     const superior_pricing = [

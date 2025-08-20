@@ -199,7 +199,12 @@ const ShippingDashboard = ({ onLoadCreated, initialSelection = { selectedCars: [
           function: 'getCarsNeedingShipping'
         });
         if(response.success){ 
-          const sortedCars = response.data.sort((a, b) => {
+          // Filter out duplicate cars based on car.id
+          const uniqueCars = response.data.filter((car, index, self) => 
+            index === self.findIndex(c => c.id === car.id)
+          );
+          
+          const sortedCars = uniqueCars.sort((a, b) => {
             const stateA = a.customer.state || '';
             const stateB = b.customer.state || '';
             return stateA.localeCompare(stateB);
@@ -382,9 +387,14 @@ const ShippingDashboard = ({ onLoadCreated, initialSelection = { selectedCars: [
   return (
     <Box className={classes.root}>
       <Box className={classes.header}>
-        <Typography variant="h4">
-          Load Selector
-        </Typography>
+        <Box>
+          <Typography variant="h4">
+            Load Selector
+          </Typography>
+          <Typography variant="body2" color="textSecondary">
+            {cars.length} cars available for shipping
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           color="primary"

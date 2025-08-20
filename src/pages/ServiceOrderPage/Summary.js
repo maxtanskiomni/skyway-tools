@@ -149,7 +149,7 @@ export default function Summary(props) {
     }
 
     const activeSelections = constants.makeSelects("order_statuses", undefined, (status) => customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49" || revenue<=depositsAmount || status !== "complete");
-    const mechanicNames = constants.makeSelects("mechanicNames", undefined, (name) => name);
+    const mechanics = constants.makeSelects("mechanics", {valueKey: "id", labelKey: "name",});
 
     const minDate = !StateManager.isAdmin();
 
@@ -158,7 +158,7 @@ export default function Summary(props) {
         // 'target-date': () => StateManager.userType === "admin" ? <DateLine id={'target_date'} label={'Target Date'} data={order} updater={dateUpdate} minDate={minDate} drop_is disabled={order.disabled}/> : <></>,
         'complete-date': () => <DateLine id={'complete_date'} label={'Complete Date'} data={order} updater={dateUpdate} minDate={minDate} drop_is disabled={order.disabled}/>,
         // 'writer': () => <TextLine id={'writer'} label='Service Writer' data={order} updater={updater} placeholder="Service Writer" disabled={order.disabled} />,
-        // "mechanicName": () => <SelectLine id={'mechanicName'} label={'Primary Mechanic'} selections={mechanicNames} data={order} updater={updater} disabled={order.disabled} />,
+        "mechanic": () => <SelectLine id={'mechanicId'} label={'Primary Mechanic'} selections={mechanics} data={order} updater={updater} disabled={order.disabled} />,
         'customer': () => <Customers customer={order.customer} stockNumber={stockNumber} type='customer' table="orders" disabled={order.disabled} autoComplete={false}/>,
         'car': () => <Cars car={order.car} stockNumber={stockNumber} type='car' table="orders" disabled={order.disabled}/>,
         "status": () => <SelectLine id={'status'} label={'Status'} selections={activeSelections} data={order} updater={statusUpdater} disabled={order.disabled} />,

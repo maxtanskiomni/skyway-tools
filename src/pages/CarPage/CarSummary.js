@@ -215,7 +215,38 @@ const RenderInput = (props) => {
     const number_values = ["price"];
     if(number_values.includes(id)) value = +value;
     const data = {[id || name]: value};
-    await firebase.firestore().collection('cars').doc(car.stock).set({...data, needsDAUpdate: true}, {merge:true});
+
+    if (id === "price") {
+      data.priceUpdated = true;
+  
+      const today = moment().format('YYYY/MM/DD');
+      let updatedHistory = [];
+  
+      // If no history exists, initialize with car's current price at status_time
+      if (!car.price_history || car.price_history.length === 0) {
+        const initialDate = car.status_time || moment().format('YYYY/MM/DD');
+        updatedHistory.push({
+          price: car.price || 0,
+          date: initialDate,
+        });
+      } else {
+        updatedHistory = [...car.price_history];
+      }
+  
+      // Remove any entry for today
+      updatedHistory = updatedHistory.filter(entry => entry.date !== today);
+  
+      // Add today's new price
+      updatedHistory.push({
+        price: value,
+        date: today,
+      });
+  
+      data.price_history = updatedHistory;
+    }
+
+    console.log(data);
+    await firebase.firestore().collection('cars').doc(car.stock).set({...data}, {merge:true});
     setValue(value);
     updateCar(data);
 

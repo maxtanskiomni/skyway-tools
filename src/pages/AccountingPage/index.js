@@ -229,6 +229,7 @@ export default function AcountingPage(props) {
           const carSnap = await db.doc("cars/"+payable.stock).get();
           const carData = carSnap.data() || {};
           payable.car = `${payable.stock || ""} ${carData.year || ""} ${carData.make || ""} ${carData.model || ""}`;
+          payable.updated_nto = carData.updated_nto;
           payable.isSold = carData.status === "sold";// || carData.stats === "success";
         }
       });

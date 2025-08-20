@@ -25,6 +25,7 @@ export default function Funding(props) {
     headers: [
       {key:'number', label:'Number'},
       {key:'date', label:'Sale Date'},
+      {key:'customerName', label:'Customer'}, 
       {key:'stock', label:'Stock Number'}, 
       {key:'carTitle', label:'Car'}, 
       {key:'total', label:'Invoice Balance', format:'usd'},

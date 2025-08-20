@@ -118,6 +118,128 @@ const ServiceDashboardPage = () => {
   const [selectedOrderForServices, setSelectedOrderForServices] = useState(null);
   const [partsDialogOpen, setPartsDialogOpen] = useState(false);
   const [selectedOrderForParts, setSelectedOrderForParts] = useState(null);
+  const [excludeCustomerFilter, setExcludeCustomerFilter] = useState(false);
+  const [hideNeedsPartsFilter, setHideNeedsPartsFilter] = useState(false);
+
+  // Real-time listener for the order open in ServicesBlade
+  useEffect(() => {
+    if (!servicesBladeOpen || !selectedOrderForServices?.id) return;
+
+    const unsubscribe = firebase.firestore()
+      .collection('orders')
+      .doc(selectedOrderForServices.id)
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          const updatedOrder = doc.data();
+          
+          // Update the order in local state
+          setAllOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === selectedOrderForServices.id 
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+          
+          // Update the selectedOrderForServices to ensure ServicesBlade gets fresh data
+          setSelectedOrderForServices(prev => ({ ...prev, ...updatedOrder }));
+        }
+      }, (error) => {
+        console.error('Error in real-time listener for order:', error);
+      });
+
+    // Cleanup subscription when ServicesBlade closes or order changes
+    return () => unsubscribe();
+  }, [servicesBladeOpen, selectedOrderForServices?.id]);
+
+  // Real-time listener for services collection to catch new services
+  useEffect(() => {
+    if (!servicesBladeOpen || !selectedOrderForServices?.id) return;
+
+    const unsubscribe = firebase.firestore()
+      .collection('services')
+      .where('order', '==', selectedOrderForServices.id)
+      .onSnapshot((snapshot) => {
+        const services = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Update the order's services in local state
+        setAllOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === selectedOrderForServices.id 
+              ? { ...order, services }
+              : order
+          )
+        );
+        
+        // Update the selectedOrderForServices to ensure ServicesBlade gets fresh data
+        setSelectedOrderForServices(prev => ({ ...prev, services }));
+      }, (error) => {
+        console.error('Error in real-time listener for services:', error);
+      });
+
+    // Cleanup subscription when ServicesBlade closes or order changes
+    return () => unsubscribe();
+  }, [servicesBladeOpen, selectedOrderForServices?.id]);
+
+  // Real-time listener for parts collection to catch new parts
+  useEffect(() => {
+    if (!partsDialogOpen || !selectedOrderForParts?.id) return;
+
+    const unsubscribe = firebase.firestore()
+      .collection('parts')
+      .where('order', '==', selectedOrderForParts.id)
+      .onSnapshot((snapshot) => {
+        const parts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Update the order's parts in local state
+        setAllOrders(prevOrders => 
+          prevOrders.map(order => 
+            order.id === selectedOrderForParts.id 
+              ? { ...order, parts }
+              : order
+          )
+        );
+        
+        // Update the selectedOrderForParts to ensure PartsBlade gets fresh data
+        setSelectedOrderForParts(prev => ({ ...prev, parts }));
+      }, (error) => {
+        console.error('Error in real-time listener for parts:', error);
+      });
+
+    // Cleanup subscription when PartsBlade closes or order changes
+    return () => unsubscribe();
+  }, [partsDialogOpen, selectedOrderForParts?.id]);
+
+  // Real-time listener for the order open in PartsBlade
+  useEffect(() => {
+    if (!partsDialogOpen || !selectedOrderForParts?.id) return;
+
+    const unsubscribe = firebase.firestore()
+      .collection('orders')
+      .doc(selectedOrderForParts.id)
+      .onSnapshot((doc) => {
+        if (doc.exists) {
+          const updatedOrder = doc.data();
+          
+          // Update the order in local state
+          setAllOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === selectedOrderForParts.id 
+                ? { ...order, ...updatedOrder }
+                : order
+            )
+          );
+          
+          // Update the selectedOrderForParts to ensure PartsBlade gets fresh data
+          setSelectedOrderForParts(prev => ({ ...prev, ...updatedOrder }));
+        }
+      }, (error) => {
+        console.error('Error in real-time listener for order:', error);
+      });
+
+    // Cleanup subscription when PartsBlade closes or order changes
+    return () => unsubscribe();
+  }, [partsDialogOpen, selectedOrderForParts?.id]);
 
   // Get initial status from URL or default to first status
   const getInitialStatus = () => {
@@ -184,91 +306,112 @@ const ServiceDashboardPage = () => {
     window.print();
   };
 
-  // Fetch all services once on component mount
-  const fetchAllServices = async () => {
-    try {
-      setLoading(true);
-      const snapshot = await firebase.firestore()
-        .collection('orders')
-        .where('status', 'in', constants.order_statuses.filter(status => status !== 'complete'))
-        .get();
-      
-      if (snapshot.empty) {
-        setAllOrders([]);
-        return;
-      }
+  // Real-time listener for all services
+  useEffect(() => {
+    setLoading(true);
+    
+    const unsubscribe = firebase.firestore()
+      .collection('orders')
+      .where('status', 'in', constants.order_statuses.filter(status => status !== 'complete'))
+      .onSnapshot(async (snapshot) => {
+        try {
+          if (snapshot.empty) {
+            setAllOrders([]);
+            setMetrics({ statusCounts: calculateStatusCounts([]), allOrders: [] });
+            setLoading(false);
+            return;
+          }
 
-      const orders = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+          const orders = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
 
-      // Fetch car and customer details for each order
-      const ordersWithDetails = await Promise.all(orders.map(async (order) => {
-        const [carData, customerData, servicesData] = await Promise.all([
-          // Fetch car data
-          (async () => {
-            if (!order.car) return null;
-            const carSnapshot = await firebase.firestore()
-              .collection('cars')
-              .where('stock', '==', order.car)
-              .limit(1)
-              .get();
+          // Fetch car and customer details for each order
+          const ordersWithDetails = await Promise.all(orders.map(async (order) => {
+            const [carData, customerData, servicesData, partsData] = await Promise.all([
+              // Fetch car data
+              (async () => {
+                if (!order.car) return null;
+                const carSnapshot = await firebase.firestore()
+                  .collection('cars')
+                  .where('stock', '==', order.car)
+                  .limit(1)
+                  .get();
 
-            if (carSnapshot.empty) return null;
-            const car = carSnapshot.docs[0].data();
+                if (carSnapshot.empty) return null;
+                const car = carSnapshot.docs[0].data();
+                return {
+                  car_title: `${car.stock} - ${car.year} ${car.make} ${car.model}${car.trim ? ` ${car.trim}` : ''}`,
+                  car_thumbnail: car.thumbnail,
+                  score: Math.round(car.score || 0)
+                };
+              })(),
+              // Fetch customer data
+              (async () => {
+                if (!order.customer) return null;
+                const customerSnapshot = await firebase.firestore()
+                  .collection('customers')
+                  .doc(order.customer)
+                  .get();
+                
+                if (!customerSnapshot.exists) return null;
+                const customer = customerSnapshot.data();
+                return {
+                  customer_name: `${customer.first_name} ${customer.last_name}`
+                };
+              })(),
+              // Fetch services for this order
+              (async () => {
+                const servicesSnapshot = await firebase.firestore()
+                  .collection('services')
+                  .where('order', '==', order.id)
+                  .get();
+
+                const services = servicesSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                return { services };
+              })(),
+              // Fetch parts for this order
+              (async () => {
+                const partsSnapshot = await firebase.firestore()
+                  .collection('parts')
+                  .where('order', '==', order.id)
+                  .get();
+
+                const parts = partsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                return { parts };
+              })()
+            ]);
+
             return {
-              car_title: `${car.stock} - ${car.year} ${car.make} ${car.model}${car.trim ? ` ${car.trim}` : ''}`,
-              car_thumbnail: car.thumbnail,
-              score: Math.round(car.score || 0)
+              ...order,
+              ...(carData || {}),
+              ...(customerData || {}),
+              ...(servicesData || {}),
+              ...(partsData || {})
             };
-          })(),
-          // Fetch customer data
-          (async () => {
-            if (!order.customer) return null;
-            const customerSnapshot = await firebase.firestore()
-              .collection('customers')
-              .doc(order.customer)
-              .get();
+          }));
 
-            if (!customerSnapshot.exists) return null;
-            const customer = customerSnapshot.data();
-            return {
-              customer_name: `${customer.first_name} ${customer.last_name}`
-            };
-          })(),
-          // Fetch services for this order
-          (async () => {
-            const servicesSnapshot = await firebase.firestore()
-              .collection('services')
-              .where('order', '==', order.id)
-              .get();
+          // Sort by score
+          ordersWithDetails.sort((a, b) => (b.score || 0) - (a.score || 0));
+          
+          setAllOrders(ordersWithDetails);
+          setMetrics({ statusCounts: calculateStatusCounts(ordersWithDetails), allOrders: ordersWithDetails });
+        } catch (error) {
+          console.error('Error processing services snapshot:', error);
+          StateManager.setAlertAndOpen("Error processing services data", "error");
+        } finally {
+          setLoading(false);
+        }
+      }, (error) => {
+        console.error('Error in services snapshot listener:', error);
+        StateManager.setAlertAndOpen("Error listening to services updates", "error");
+        setLoading(false);
+      });
 
-            const services = servicesSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            return { services };
-          })()
-        ]);
-
-        return {
-          ...order,
-          ...(carData || {}),
-          ...(customerData || {}),
-          ...(servicesData || {})
-        };
-      }));
-
-      // Sort by score
-      ordersWithDetails.sort((a, b) => (b.score || 0) - (a.score || 0));
-      
-      setAllOrders(ordersWithDetails);
-      setMetrics({ statusCounts: calculateStatusCounts(ordersWithDetails), allOrders: ordersWithDetails });
-    } catch (error) {
-      console.error('Error fetching services:', error);
-      StateManager.setAlertAndOpen("Error fetching services", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Cleanup subscription when component unmounts
+    return () => unsubscribe();
+  }, []);
 
   // Calculate status counts from orders
   const calculateStatusCounts = (orders) => {
@@ -279,6 +422,14 @@ const ServiceDashboardPage = () => {
         statusCounts[status] = orders.filter(order => order.status === status).length;
       });
     return statusCounts;
+  };
+
+  // Check if an order has incomplete parts
+  const hasIncompleteParts = (order) => {
+    if (!order.parts || !Array.isArray(order.parts)) return false;
+    return order.parts.some(part => 
+      part.status !== 'complete' && part.status !== 'returning'
+    );
   };
 
   // Filter orders based on status and search query
@@ -294,11 +445,17 @@ const ServiceDashboardPage = () => {
         order.car_title?.toLowerCase().includes(searchLower) ||
         getMechanicName(order.mechanicId)?.toLowerCase().includes(searchLower);
       
-      return matchesStatus && matchesSearch;
+      // Exclude specific customer if filter is active
+      const excludedCustomer = excludeCustomerFilter && order.customer === '9c0d88f5-84f9-454d-833d-a8ced9adad49';
+      
+      // Hide orders that need parts if filter is active
+      const hiddenNeedsParts = hideNeedsPartsFilter && hasIncompleteParts(order);
+      
+      return matchesStatus && matchesSearch && !excludedCustomer && !hiddenNeedsParts;
     });
 
     setOrders(filteredOrders);
-  }, [allOrders, statusFilter, searchQuery]);
+  }, [allOrders, statusFilter, searchQuery, excludeCustomerFilter, hideNeedsPartsFilter]);
 
   // Update metrics when search query changes
   useEffect(() => {
@@ -312,14 +469,20 @@ const ServiceDashboardPage = () => {
         order.car_title?.toLowerCase().includes(searchLower) ||
         getMechanicName(order.mechanicId)?.toLowerCase().includes(searchLower);
       
-      return matchesSearch;
+      // Exclude specific customer if filter is active
+      const excludedCustomer = excludeCustomerFilter && order.customer === '9c0d88f5-84f9-454d-833d-a8ced9adad49';
+      
+      // Hide orders that need parts if filter is active
+      const hiddenNeedsParts = hideNeedsPartsFilter && hasIncompleteParts(order);
+      
+      return matchesSearch && !excludedCustomer && !hiddenNeedsParts;
     });
 
     setMetrics(prev => ({ 
       ...prev, 
       statusCounts: calculateStatusCounts(filteredOrders)
     }));
-  }, [searchQuery, allOrders]);
+  }, [searchQuery, allOrders, excludeCustomerFilter, hideNeedsPartsFilter]);
 
   // Update status filter when URL changes
   useEffect(() => {
@@ -329,10 +492,7 @@ const ServiceDashboardPage = () => {
     }
   }, [location.search]);
 
-  // Initial data fetch
-  useEffect(() => {
-    fetchAllServices();
-  }, []);
+
 
   // Update local state when status changes
   const handleStatusChange = async (newStatus) => {
@@ -459,6 +619,11 @@ const ServiceDashboardPage = () => {
           : order
       )
     );
+    
+    // Also update the selectedOrderForServices to ensure ServicesBlade gets fresh data immediately
+    if (selectedOrderForServices) {
+      setSelectedOrderForServices(prev => ({ ...prev, services: updatedServices }));
+    }
   };
 
   const handlePartsUpdate = (updatedParts) => {
@@ -470,6 +635,11 @@ const ServiceDashboardPage = () => {
           : order
       )
     );
+    
+    // Also update the selectedOrderForParts to ensure PartsBlade gets fresh data immediately
+    if (selectedOrderForParts) {
+      setSelectedOrderForParts(prev => ({ ...prev, parts: updatedParts }));
+    }
   };
 
   const handleServiceClick = (event, serviceId) => {
@@ -632,11 +802,30 @@ const ServiceDashboardPage = () => {
       </style>
 
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4, position: 'relative', minHeight: 'calc(100vh - 100px)' }} className="print-section">
-        {/* Header with Mechanic Orders Link and Print Button */}
+        {/* Header with Mechanic Orders Link, Parts Dashboard Link and Print Button */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }} className="no-print">
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
-            Service Dashboard
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="h4" component="h1" sx={{ fontWeight: 600, color: theme.palette.text.primary }}>
+              Service Dashboard
+            </Typography>
+            {excludeCustomerFilter && (
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'error.main', 
+                  bgcolor: alpha(theme.palette.error.main, 0.1),
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 1,
+                  border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                  fontSize: '0.75rem',
+                  fontWeight: 500
+                }}
+              >
+                Customer Filtered
+              </Typography>
+            )}
+          </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Tooltip title="Print current view">
               <Button
@@ -650,6 +839,7 @@ const ServiceDashboardPage = () => {
                   color: theme.palette.primary.main,
                   px: 2,
                   py: 1,
+                  display: { xs: 'none', md: 'flex' }, // Hide on mobile
                   '&:hover': {
                     borderColor: theme.palette.primary.main,
                     bgcolor: alpha(theme.palette.primary.main, 0.05),
@@ -657,6 +847,28 @@ const ServiceDashboardPage = () => {
                 }}
               >
                 Print
+              </Button>
+            </Tooltip>
+            <Tooltip title="Open Parts Dashboard in new tab">
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<OpenInNewIcon />}
+                onClick={() => window.open('/parts-dashboard', '_blank')}
+                sx={{
+                  textTransform: 'none',
+                  borderColor: alpha(theme.palette.primary.main, 0.3),
+                  color: theme.palette.primary.main,
+                  px: 2,
+                  py: 1,
+                  display: { xs: 'none', md: 'flex' }, // Hide on mobile
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    bgcolor: alpha(theme.palette.primary.main, 0.05),
+                  }
+                }}
+              >
+                Parts Dashboard
               </Button>
             </Tooltip>
             <Tooltip title="Open Mechanic Orders in new tab">
@@ -671,6 +883,7 @@ const ServiceDashboardPage = () => {
                   color: theme.palette.primary.main,
                   px: 2,
                   py: 1,
+                  display: { xs: 'none', md: 'flex' }, // Hide on mobile
                   '&:hover': {
                     borderColor: theme.palette.primary.main,
                     bgcolor: alpha(theme.palette.primary.main, 0.05),
@@ -680,6 +893,7 @@ const ServiceDashboardPage = () => {
                 Mechanic Orders
               </Button>
             </Tooltip>
+
           </Box>
         </Box>
 
@@ -693,13 +907,25 @@ const ServiceDashboardPage = () => {
               Search: "{searchQuery}"
             </Typography>
           )}
+          {excludeCustomerFilter && (
+            <Typography variant="body1" sx={{ mb: 2, color: 'error.main' }}>
+              Filtered: Excluding specific customer orders
+            </Typography>
+          )}
+          {hideNeedsPartsFilter && (
+            <Typography variant="body1" sx={{ mb: 2, color: 'error.main' }}>
+              Filtered: Hiding orders that need parts
+            </Typography>
+          )}
           <Typography variant="body2" sx={{ mb: 2 }}>
             Printed on: {moment().format('MMMM Do YYYY, h:mm:ss a')}
           </Typography>
         </Box>
 
         <Grid container spacing={3}>
-                  {/* Metrics Cards - Single Row */}
+
+        {/* Metrics Cards - Single Row */}
+        
         <Grid item xs={12} className="no-print">
           <Box sx={{ 
             display: 'flex', 
@@ -748,7 +974,13 @@ const ServiceDashboardPage = () => {
 
           {/* Search and Filter Bar */}
           <Grid item xs={12} className="no-print">
-            <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Paper sx={{ 
+              p: 2, 
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'stretch', md: 'center' }, 
+              gap: 2 
+            }}>
               <TextField
                 fullWidth
                 variant="outlined"
@@ -763,7 +995,10 @@ const ServiceDashboardPage = () => {
                   ),
                 }}
               />
-              <FormControl sx={{ minWidth: 200 }}>
+              <FormControl sx={{ 
+                minWidth: { xs: '100%', md: 200 },
+                width: { xs: '100%', md: 'auto' }
+              }}>
                 <InputLabel id="status-filter-label">Status</InputLabel>
                 <Select
                   labelId="status-filter-label"
@@ -792,6 +1027,65 @@ const ServiceDashboardPage = () => {
                     ))}
                 </Select>
               </FormControl>
+              <Tooltip title={excludeCustomerFilter ? "Show all customers" : "Hide Skyway orders"}>
+                <ToggleButton
+                  value="excludeCustomer"
+                  selected={excludeCustomerFilter}
+                  onChange={() => setExcludeCustomerFilter(!excludeCustomerFilter)}
+                  sx={{
+                    textTransform: 'none',
+                    borderColor: excludeCustomerFilter ? theme.palette.error.main : alpha(theme.palette.primary.main, 0.3),
+                    color: excludeCustomerFilter ? theme.palette.error.main : theme.palette.primary.main,
+                    px: 2,
+                    py: 1,
+                    height: { xs: 48, md: 56 }, // Smaller height on mobile
+                    width: { xs: '100%', md: 'auto' }, // Full width on mobile
+                    '&.Mui-selected': {
+                      bgcolor: alpha(theme.palette.error.main, 0.1),
+                      borderColor: theme.palette.error.main,
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.error.main, 0.15),
+                      }
+                    },
+                    '&:hover': {
+                      borderColor: excludeCustomerFilter ? theme.palette.error.main : theme.palette.primary.main,
+                      bgcolor: excludeCustomerFilter ? alpha(theme.palette.error.main, 0.05) : alpha(theme.palette.primary.main, 0.05),
+                    }
+                  }}
+                >
+                  {excludeCustomerFilter ? "Show All" : "Hide Skyway"}
+                </ToggleButton>
+              </Tooltip>
+              <Tooltip title={hideNeedsPartsFilter ? "Show all orders" : "Hide orders that need parts"}>
+                <ToggleButton
+                  value="hideNeedsParts"
+                  selected={hideNeedsPartsFilter}
+                  onChange={() => setHideNeedsPartsFilter(!hideNeedsPartsFilter)}
+                  sx={{
+                    textTransform: 'none',
+                    borderColor: hideNeedsPartsFilter ? theme.palette.error.main : alpha(theme.palette.primary.main, 0.3),
+                    color: hideNeedsPartsFilter ? theme.palette.error.main : theme.palette.primary.main,
+                    px: 2,
+                    py: 1,
+                    height: { xs: 48, md: 56 }, // Smaller height on mobile
+                    width: { xs: '100%', md: 'auto' }, // Full width on mobile
+                    whiteSpace: 'nowrap', // Prevent text wrapping
+                    '&.Mui-selected': {
+                      bgcolor: alpha(theme.palette.error.main, 0.1),
+                      borderColor: theme.palette.error.main,
+                      '&:hover': {
+                        bgcolor: alpha(theme.palette.error.main, 0.15),
+                      }
+                    },
+                    '&:hover': {
+                      borderColor: hideNeedsPartsFilter ? theme.palette.error.main : theme.palette.primary.main,
+                      bgcolor: hideNeedsPartsFilter ? alpha(theme.palette.error.main, 0.05) : alpha(theme.palette.primary.main, 0.05),
+                    }
+                  }}
+                >
+                  {hideNeedsPartsFilter ? "Show All" : "Hide Needs Parts"}
+                </ToggleButton>
+              </Tooltip>
             </Paper>
           </Grid>
 
@@ -1011,63 +1305,85 @@ const ServiceDashboardPage = () => {
                             {order.customer_name || '-'}
                           </TableCell>
                           <TableCell className="no-print" sx={{ minWidth: 120 }}>
-                            <Box
-                              onClick={(e) => handleStatusClick(e, order)}
-                              className="status-cell"
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: 1,
-                                bgcolor: alpha(getStatusColor(order.status), 0.1),
-                                color: getStatusColor(order.status),
-                                fontWeight: 'medium',
-                                textTransform: 'capitalize',
-                                cursor: 'pointer',
-                                minWidth: 100,
-                                position: 'relative',
-                                whiteSpace: 'nowrap',
-                                '&:hover': {
-                                  bgcolor: alpha(getStatusColor(order.status), 0.2),
-                                },
-                                '@media print': {
-                                  cursor: 'default',
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box
+                                onClick={(e) => handleStatusClick(e, order)}
+                                className="status-cell"
+                                sx={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 1,
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: 1,
+                                  bgcolor: alpha(getStatusColor(order.status), 0.1),
+                                  color: getStatusColor(order.status),
+                                  fontWeight: 'medium',
+                                  textTransform: 'capitalize',
+                                  cursor: 'pointer',
+                                  minWidth: 100,
+                                  position: 'relative',
+                                  whiteSpace: 'nowrap',
                                   '&:hover': {
-                                    bgcolor: alpha(getStatusColor(order.status), 0.1),
+                                    bgcolor: alpha(getStatusColor(order.status), 0.2),
+                                  },
+                                  '@media print': {
+                                    cursor: 'default',
+                                    '&:hover': {
+                                      bgcolor: alpha(getStatusColor(order.status), 0.1),
+                                    }
                                   }
-                                }
-                              }}
-                            >
-                              {updatingStatus && updatingOrderId === order.id ? (
-                                <CircularProgress
-                                  size={16}
-                                  sx={{
-                                    color: 'inherit',
-                                    position: 'absolute',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)'
-                                  }}
-                                />
-                              ) : (
-                                <>
-                                  <Box
+                                }}
+                              >
+                                {updatingStatus && updatingOrderId === order.id ? (
+                                  <CircularProgress
+                                    size={16}
                                     sx={{
-                                      width: 8,
-                                      height: 8,
-                                      borderRadius: '50%',
-                                      bgcolor: 'currentColor',
-                                      flexShrink: 0
+                                      color: 'inherit',
+                                      position: 'absolute',
+                                      left: '50%',
+                                      transform: 'translateX(-50%)'
                                     }}
                                   />
-                                  <Typography sx={{ 
-                                    opacity: updatingStatus && updatingOrderId === order.id ? 0 : 1,
+                                ) : (
+                                  <>
+                                    <Box
+                                      sx={{
+                                        width: 8,
+                                        height: 8,
+                                        borderRadius: '50%',
+                                        bgcolor: 'currentColor',
+                                        flexShrink: 0
+                                      }}
+                                    />
+                                    <Typography sx={{ 
+                                      opacity: updatingStatus && updatingOrderId === order.id ? 0 : 1,
+                                      whiteSpace: 'nowrap'
+                                    }}>
+                                      {order.status}
+                                    </Typography>
+                                  </>
+                                )}
+                              </Box>
+                              {hasIncompleteParts(order) && (
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.5,
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                    color: theme.palette.error.main,
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'medium',
                                     whiteSpace: 'nowrap'
-                                  }}>
-                                    {order.status}
-                                  </Typography>
-                                </>
+                                  }}
+                                >
+                                  <InventoryIcon sx={{ fontSize: 16 }} />
+                                  needs parts
+                                </Box>
                               )}
                             </Box>
                           </TableCell>
@@ -1333,9 +1649,20 @@ const ServiceDashboardPage = () => {
         >
           <DialogTitle>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                Services - {selectedOrderForServices?.id}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6">
+                  Services - {selectedOrderForServices?.id}
+                </Typography>
+                <Tooltip title="Open Service Order">
+                  <IconButton
+                    onClick={() => window.open(`/service-order/${selectedOrderForServices?.id}?tab=services`, '_blank')}
+                    size="small"
+                    sx={{ color: theme.palette.info.main }}
+                  >
+                    <OpenInNewIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
               <IconButton onClick={handleServicesBladeClose}>
                 <CheckIcon />
               </IconButton>
@@ -1367,9 +1694,20 @@ const ServiceDashboardPage = () => {
         >
           <DialogTitle>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6">
-                Parts - {selectedOrderForParts?.id}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="h6">
+                  Parts - {selectedOrderForParts?.id}
+                </Typography>
+                <Tooltip title="Open Parts Dashboard">
+                  <IconButton
+                    onClick={() => window.open(`/parts-dashboard`, '_blank')}
+                    size="small"
+                    sx={{ color: theme.palette.info.main }}
+                  >
+                    <OpenInNewIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
               <IconButton onClick={handlePartsDialogClose}>
                 <CheckIcon />
               </IconButton>
@@ -1385,24 +1723,6 @@ const ServiceDashboardPage = () => {
             )}
           </DialogContent>
         </Dialog>
-
-        {/* <Fab
-          color="primary"
-          aria-label="add"
-          onClick={() => history.push('/service/new')}
-          sx={{
-            position: 'fixed',
-            bottom: 24,
-            right: 24,
-            width: 56,
-            height: 56,
-            '& .MuiSvgIcon-root': {
-              fontSize: 24
-            }
-          }}
-        >
-          <AddIcon />
-        </Fab> */}
       </Container>
     </>
   );

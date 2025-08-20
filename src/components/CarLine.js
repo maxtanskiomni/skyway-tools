@@ -37,7 +37,7 @@ export default function CarLine(props) {
   React.useEffect(async () => {
     const expenses = await firebase.firestore().collection("purchases").where("stock", "==", car.stock).get();
     const total = expenses.docs.reduce((a,c) => a + c.data().amount , 0);
-    StateManager.addToValue(isNaN(total) ? 0 : total);
+    // StateManager.addToValue is not available, so we'll skip this call
     setCost(total.toLocaleString())
     let currentPrice = +car.price.replace(",", "");
     currentPrice = isNaN(currentPrice) ? 0 : currentPrice || 0;

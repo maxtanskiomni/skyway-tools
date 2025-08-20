@@ -12,7 +12,9 @@ import Check from '../../components/Check.js';
 import Action from '../../components/Action.js';
 import DateLine from '../../components/DateLine.js';
 import FileLine from '../../components/FileLine.js';
+import SelectLine from '../../components/SelectLine.js';
 import Button from '@mui/material/Button';
+import constants from '../../utilities/constants.js';
 
 export default function Consignor(props) {
     let { car } = props;
@@ -133,7 +135,7 @@ export default function Consignor(props) {
         'actual_miles': () => <Check id={'is_actual'} label={'Is Actual Miles'} data={car} updater={updater} />,
         'nto': () => <TextLine id={'nto'} label={'Original NTO'} type="number" data={car} updater={ntoUpdater} />,
         'updated_nto': () => <TextLine id={'updated_nto'} label={'Updated NTO'} type="number" data={car} updater={updater} />,
-        'consign-rep': () => <TextLine id={'consign_rep'} label='Consignment Rep' data={car} updater={updater} placeholder="First & Last" />,
+        'consign-rep': () => <SelectLine id={'consign_rep'} label='Consignment Rep' data={car} updater={updater} selections={constants.consignors.map(name => ({value: name, label: name}))} />,
         'title-front': () => <NewFileLine id={"title_front"} label={"Title Front"} allowable="imageLike" folder="titles" saveLocation={`cars/${stockNumber}`} data={car} updater={StateManager.updateCar} />,
         'title-back': () => <NewFileLine id={"title_back"} label={"Title Back"} allowable="imageLike" folder="titles" saveLocation={`cars/${stockNumber}`} data={car} updater={StateManager.updateCar} />,
         'memorabilia': () => <Check id={'has_memorabilia'} label={'Has Memorabilia'} data={car} updater={updater} />,

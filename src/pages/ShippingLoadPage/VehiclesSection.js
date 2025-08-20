@@ -6,6 +6,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ClearIcon from '@mui/icons-material/Clear';
 import { ArrowForward } from '@mui/icons-material';
 import { StateManager } from '../../utilities/stateManager';
+import firebase from '../../utilities/firebase';
 
 const VehiclesSection = ({ 
   loadData, 
@@ -22,13 +23,25 @@ const VehiclesSection = ({
   const removeDebounceTimer = useRef(null);
   const pendingRemovals = useRef(new Set());
 
-  const handleRemoveCar = (carId) => {
+  const handleRemoveCar = async (carId) => {
     // Add to pending removals
     pendingRemovals.current.add(carId);
 
     // Update local UI immediately
     const updatedCars = loadData.cars.filter(car => !pendingRemovals.current.has(car.id));
     updateLocalUI(updatedCars);
+
+    // Check if car exists in deals collection and update shipping_complete
+    try {
+      const dealDoc = await firebase.firestore().doc(`deals/${carId}`).get();
+      if (dealDoc.exists) {
+        await firebase.firestore().doc(`deals/${carId}`).set({
+          shipping_complete: false
+        }, { merge: true });
+      }
+    } catch (error) {
+      console.error('Error updating shipping_complete in deals collection:', error);
+    }
 
     // Clear any existing timer
     if (removeDebounceTimer.current) {

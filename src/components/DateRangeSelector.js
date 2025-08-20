@@ -38,12 +38,12 @@ const DateRangeSelector = ({
   showQuickSelectors = true 
 }) => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [localStartDate, setLocalStartDate] = React.useState(startDate ? new Date(startDate) : moment().startOf('month').toDate());
-  const [localEndDate, setLocalEndDate] = React.useState(endDate ? new Date(endDate) : moment().endOf('month').toDate());
+  const [localStartDate, setLocalStartDate] = React.useState(startDate ? moment(startDate).toDate() : moment().startOf('month').toDate());
+  const [localEndDate, setLocalEndDate] = React.useState(endDate ? moment(endDate).toDate() : moment().endOf('month').toDate());
 
   React.useEffect(() => {
-    if (startDate) setLocalStartDate(new Date(startDate));
-    if (endDate) setLocalEndDate(new Date(endDate));
+    if (startDate) setLocalStartDate(moment(startDate).startOf('month').toDate());
+    if (endDate) setLocalEndDate(moment(endDate).endOf('month').toDate());
   }, [startDate, endDate]);
 
   const handleDateChange = (dates) => {
@@ -60,8 +60,8 @@ const DateRangeSelector = ({
   };
 
   const handleCancel = () => {
-    setLocalStartDate(startDate ? new Date(startDate) : moment().startOf('month').toDate());
-    setLocalEndDate(endDate ? new Date(endDate) : moment().endOf('month').toDate());
+    setLocalStartDate(startDate ? moment(startDate).toDate() : moment().startOf('month').toDate());
+    setLocalEndDate(endDate ? moment(endDate).toDate() : moment().endOf('month').toDate());
     setIsModalOpen(false);
   };
 
@@ -120,15 +120,23 @@ const DateRangeSelector = ({
   const formatDateRange = () => {
     if (!localStartDate || !localEndDate) return 'Select Date Range';
     
-    const start = moment(localStartDate);
-    const end = moment(localEndDate);
+    const start = moment(localStartDate).startOf('month');
+    const end = moment(localEndDate).endOf('month');
+    
+    // Debug logging to help identify issues
+    console.log('DateRangeSelector - Input dates:', { startDate, endDate });
+    console.log('DateRangeSelector - Local dates:', { localStartDate, localEndDate });
+    console.log('DateRangeSelector - Moment dates:', { 
+      start: start.format('YYYY-MM-DD'), 
+      end: end.format('YYYY-MM-DD') 
+    });
     
     if (start.isSame(end, 'month') && start.isSame(end, 'year')) {
       return start.format('MMMM YYYY');
     } else if (start.isSame(end, 'year')) {
-      return `${start.format('MMM')} - ${end.format('MMM YYYY')}`;
+      return `${start.format('MMM')} - ${end.format('MMM, YYYY')}`;
     } else {
-      return `${start.format('MMM YYYY')} - ${end.format('MMM YYYY')}`;
+      return `${start.format('MMM, YYYY')} - ${end.format('MMM, YYYY')}`;
     }
   };
 

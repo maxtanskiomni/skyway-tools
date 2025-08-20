@@ -192,6 +192,7 @@ const setCustomer = async (stockNumber, type, id) => {
   await db.doc('orders/'+stockNumber).set(addition, {merge: true});
   let customer = await db.doc(`customers/${id}`).get();
   customer = customer.data();
+  customer.id = id; // Add the id field to the customer object
   customer.display_name = `${customer.first_name || ""}${!!customer.last_name ? " " : ""}${customer.last_name || ""}`;
   const update = {[type]: customer};
   StateManager.updateCar(update);

@@ -26,6 +26,7 @@ import {
   ListItemText,
   Dialog,
   DialogContent,
+  IconButton,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
@@ -55,6 +56,8 @@ const PartsDashboardPage = () => {
   const [updatingPartId, setUpdatingPartId] = useState(null);
   const [selectedPartForEdit, setSelectedPartForEdit] = useState(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [sortField, setSortField] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   // Get initial status from URL or default to first status
   const getInitialStatus = () => {
@@ -143,9 +146,17 @@ const PartsDashboardPage = () => {
           ...(carData || {})
         };
       }));
+
+      // Filter parts to only show those where order status is after "approval"
+      const approvedStatusIndex = constants.order_statuses.indexOf('approval');
+      const filteredParts = partsWithDetails.filter(part => {
+        if (!part.order_status) return false;
+        const orderStatusIndex = constants.order_statuses.indexOf(part.order_status);
+        return orderStatusIndex > approvedStatusIndex;
+      });
       
-      setAllParts(partsWithDetails);
-      setMetrics({ statusCounts: calculateStatusCounts(partsWithDetails) });
+      setAllParts(filteredParts);
+      setMetrics({ statusCounts: calculateStatusCounts(filteredParts) });
     } catch (error) {
       console.error('Error fetching parts:', error);
       StateManager.setAlertAndOpen("Error fetching parts", "error");
@@ -165,24 +176,76 @@ const PartsDashboardPage = () => {
     return statusCounts;
   };
 
-  // Filter parts based on status and search query
+  // Filter and sort parts based on status, search query, and sort settings
   useEffect(() => {
     if (!allParts.length) return;
 
     const searchLower = searchQuery.toLowerCase();
-    const filteredParts = allParts.filter(part => {
-      const matchesStatus = part.status === statusFilter;
+    
+    // Filter parts for search only (for metrics calculation)
+    const searchFilteredParts = allParts.filter(part => {
       const matchesSearch = 
         part.id?.toLowerCase().includes(searchLower) ||
         part.name?.toLowerCase().includes(searchLower) ||
+        part.partNumber?.toLowerCase().includes(searchLower) ||
         part.vendor?.toLowerCase().includes(searchLower) ||
+        part.order?.toLowerCase().includes(searchLower) ||
         part.car_title?.toLowerCase().includes(searchLower);
       
-      return matchesStatus && matchesSearch;
+      return matchesSearch;
     });
 
-    setParts(filteredParts);
-  }, [allParts, statusFilter, searchQuery]);
+    // Filter parts for both status and search (for table display)
+    const filteredParts = searchFilteredParts.filter(part => {
+      const matchesStatus = part.status === statusFilter;
+      return matchesStatus;
+    });
+
+    // Sort the filtered parts
+    const sortedParts = [...filteredParts].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle date fields
+      if (sortField === 'date' || sortField === 'orderDate' || sortField === 'arrivalDate') {
+        aValue = aValue ? new Date(aValue).getTime() : 0;
+        bValue = bValue ? new Date(bValue).getTime() : 0;
+      }
+      
+      // Handle numeric fields
+      if (sortField === 'cost') {
+        aValue = parseFloat(aValue) || 0;
+        bValue = parseFloat(bValue) || 0;
+      }
+      
+      // Handle string fields
+      if (typeof aValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) aValue = '';
+      if (bValue === null || bValue === undefined) bValue = '';
+
+      if (sortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    setParts(sortedParts);
+    
+    // Update metrics based on search-filtered results only (not status-filtered)
+    const filteredStatusCounts = {};
+    constants.part_statuses
+      .filter(status => status !== 'complete')
+      .forEach(status => {
+        filteredStatusCounts[status] = searchFilteredParts.filter(part => part.status === status).length;
+      });
+    setMetrics({ statusCounts: filteredStatusCounts });
+  }, [allParts, statusFilter, searchQuery, sortField, sortDirection]);
 
   // Update status filter when URL changes
   useEffect(() => {
@@ -328,6 +391,22 @@ const PartsDashboardPage = () => {
   const handlePartSubmit = () => {
     // Close the dialog after successful save
     handleEditDialogClose();
+  };
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      // If clicking the same field, toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // If clicking a new field, set it as sort field and default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (field) => {
+    if (sortField !== field) return null;
+    return sortDirection === 'asc' ? '↑' : '↓';
   };
 
   const renderStatusCell = (part) => (
@@ -512,31 +591,132 @@ const PartsDashboardPage = () => {
 
         {/* Parts Table */}
         <Grid item xs={12}>
-          <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
-              <Table stickyHeader>
+          <Paper sx={{ width: '100%' }}>
+            <TableContainer>
+              <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Car</TableCell>
-                    <TableCell>Part Name</TableCell>
-                    <TableCell>Vendor</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Order Date</TableCell>
-                    <TableCell>Est. Arrival</TableCell>
-                    <TableCell align="right">Cost</TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('date')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Date {getSortIcon('date')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('car_title')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Car {getSortIcon('car_title')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('name')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Part Name {getSortIcon('name')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('partNumber')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Part Number {getSortIcon('partNumber')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('vendor')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Vendor {getSortIcon('vendor')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('status')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Status {getSortIcon('status')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('orderDate')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Order Date {getSortIcon('orderDate')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      onClick={() => handleSort('arrivalDate')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        Est. Arrival {getSortIcon('arrivalDate')}
+                      </Box>
+                    </TableCell>
+                    <TableCell 
+                      align="right"
+                      onClick={() => handleSort('cost')}
+                      sx={{ 
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
+                        Cost {getSortIcon('cost')}
+                      </Box>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      <TableCell colSpan={9} align="center">
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
                   ) : parts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center">
+                      <TableCell colSpan={9} align="center">
                         No parts found
                       </TableCell>
                     </TableRow>
@@ -599,11 +779,12 @@ const PartsDashboardPage = () => {
                                 lineHeight: 1.2
                               }}
                             >
-                              {part.car_title || '-'}
+                              {`${part.order} - ${part.car_title || "No car data"}`}
                             </Typography>
                           </Box>
                         </TableCell>
                         <TableCell>{part.name}</TableCell>
+                        <TableCell>{part.partNumber || '-'}</TableCell>
                         <TableCell>{part.vendor}</TableCell>
                         <TableCell>
                           {renderStatusCell(part)}

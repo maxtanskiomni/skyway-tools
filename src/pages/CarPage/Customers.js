@@ -22,11 +22,25 @@ import { v4 as uuidv4 } from 'uuid';
 
 export default function Customers(props) {
   const { stockNumber, customer = {}, table="deals", type } = props;
-  const [value, setValue] = React.useState(customer.display_name || "");
-  const [currentValue, setCurrentValue] = React.useState(value);
-  const [check, setChecked] = React.useState(!!customer.display_name);
+  
+  // Ensure customer object has required properties
+  const safeCustomer = customer && typeof customer === 'object' ? customer : {};
+  const initialDisplayName = safeCustomer.display_name || "";
+  
+  const [value, setValue] = React.useState(initialDisplayName);
+  const [currentValue, setCurrentValue] = React.useState(initialDisplayName);
+  const [check, setChecked] = React.useState(!!initialDisplayName);
   const [results, setResults] = React.useState([]);
   const [selected, setSelected] = React.useState(0);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Sync component state when customer prop changes
+  React.useEffect(() => {
+    const displayName = safeCustomer.display_name || "";
+    setValue(displayName);
+    setCurrentValue(displayName);
+    setChecked(!!displayName);
+  }, [safeCustomer.display_name, safeCustomer.id]);
 
   React.useLayoutEffect(() => {
     setChecked(currentValue !== "");
@@ -82,11 +96,25 @@ export default function Customers(props) {
 
   const getAction = (hit) => {
     const action = async (data) => {
-      const display_name = `${hit.first_name || ""}${!!hit.last_name ? " " : "" }${hit.last_name || ""}`;
-      setValue(display_name);
-      setCurrentValue(display_name);
-      setResults([]);
-      return await setCustomer(stockNumber, type, hit.objectID);
+      try {
+        setIsLoading(true);
+        const display_name = `${hit.first_name || ""}${!!hit.last_name ? " " : "" }${hit.last_name || ""}`;
+        
+        // First update the database
+        await setCustomer(stockNumber, type, hit.objectID);
+        
+        // Only update UI state after successful database update
+        setValue(display_name);
+        setCurrentValue(display_name);
+        setResults([]);
+      } catch (error) {
+        console.error('Error setting customer:', error);
+        // Revert to previous state on error
+        setValue(currentValue);
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
     return action
   }
@@ -94,7 +122,9 @@ export default function Customers(props) {
   const keyPress = (e) => {
     if(e.key === "Enter") {
       const curr_hit = results[selected];
-      return curr_hit.action()
+      if (curr_hit && curr_hit.action) {
+        return curr_hit.action()
+      }
     }
 
     if(e.key === "Escape") {
@@ -120,7 +150,7 @@ export default function Customers(props) {
     history.push(destination);
   }
 
-  const custLink = "/customer/"+customer.customer;
+  const custLink = "/customer/"+(safeCustomer.customer || safeCustomer.id);
 
   const editCustomer = () => {
     history.push(custLink);
@@ -151,7 +181,10 @@ export default function Customers(props) {
               onChange={updateValue}
               onKeyDown={keyPress}
               onBlur={onBlur}
-              disabled={props.disabled}
+              disabled={props.disabled || isLoading}
+              InputProps={{
+                endAdornment: isLoading ? <CircularProgress size={20} /> : null,
+              }}
           />
           <div style={{position: "absolute", zIndex: 10000}}>
             <ResultsList results={results} selected={selected} removeIcon forceHeight capWidth/>
@@ -183,20 +216,59 @@ const getLabel = (hit) => {
 }
 
 const removeCustomerFromObjects = async (stockNumber, type) => {
-  console.log("blurb", stockNumber, type);
-  const removal = {[type]: firebase.firestore.FieldValue.delete()};
-  await firebase.firestore().doc('deals/'+stockNumber).set(removal, {merge: true});
-  await firebase.firestore().doc('cars/'+stockNumber).set(removal, {merge: true});
+  try {
+    console.log("Removing customer from objects:", stockNumber, type);
+    const removal = {[type]: firebase.firestore.FieldValue.delete()};
+    
+    // Update both deals and cars documents
+    await Promise.all([
+      firebase.firestore().doc('deals/'+stockNumber).set(removal, {merge: true}),
+      firebase.firestore().doc('cars/'+stockNumber).set(removal, {merge: true})
+    ]);
+    
+    // Also update the local state
+    StateManager.updateCar(removal);
+    
+    console.log(`Successfully removed customer from ${type} on car ${stockNumber}`);
+  } catch (error) {
+    console.error('Error removing customer from objects:', error);
+    throw error;
+  }
 }
 
 const setCustomer = async (stockNumber, type, id) => {
-  const addition = {[type]: id}
-  const db = firebase.firestore();
-  await db.doc('deals/'+stockNumber).set(addition, {merge: true});
-  await db.doc('cars/'+stockNumber).set(addition, {merge: true});
-  let customer = await db.doc(`customers/${id}`).get();
-  customer = customer.data();
-  customer.display_name = `${customer.first_name || ""}${!!customer.last_name ? " " : ""}${customer.last_name || ""}`;
-  const update = {[type]: customer};
-  StateManager.updateCar(update);
+  try {
+    const addition = {[type]: id}
+    const db = firebase.firestore();
+    
+    // Update both deals and cars documents
+    await Promise.all([
+      db.doc('deals/'+stockNumber).set(addition, {merge: true}),
+      db.doc('cars/'+stockNumber).set(addition, {merge: true})
+    ]);
+    
+    // Fetch the customer data
+    let customerDoc = await db.doc(`customers/${id}`).get();
+    
+    if (!customerDoc.exists) {
+      throw new Error(`Customer with ID ${id} not found`);
+    }
+    
+    let customer = customerDoc.data();
+    customer.id = id; // Add the id field to the customer object
+    
+    // Ensure display_name is properly formatted
+    customer.display_name = `${customer.first_name || ""}${!!customer.last_name ? " " : ""}${customer.last_name || ""}`.trim();
+    
+    // Update the local state
+    const update = {[type]: customer};
+    StateManager.updateCar(update);
+    
+    console.log(`Successfully set customer ${id} for ${type} on car ${stockNumber}:`, customer);
+    
+    return customer;
+  } catch (error) {
+    console.error('Error in setCustomer:', error);
+    throw error; // Re-throw to let the calling function handle it
+  }
 }

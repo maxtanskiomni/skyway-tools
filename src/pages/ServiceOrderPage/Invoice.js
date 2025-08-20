@@ -57,7 +57,7 @@ export default function Invoice({ order }) {
     order.customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49" ? 0 : isValidNumber(order.shopSuppliesRate) ? order.shopSuppliesRate : 0.03
   );
   
-  const DEFAULT_MARGIN = 25; // 25% default margin
+  const DEFAULT_MARGIN = 35; // 25% default margin
   const TAX_RATE = order.customer.id === "9c0d88f5-84f9-454d-833d-a8ced9adad49" ? 0 : 0.06; 
 
   // Initialize selections and margins when order data changes

@@ -40,6 +40,12 @@ export default function NewFileLine(props) {
   const [fileLoaded, setFileLoaded] = React.useState(!!data[props.id]);
   const [filepath, setFilePath] = React.useState(data[props.id]);
 
+  // Update local state when data prop changes
+  React.useEffect(() => {
+    setFileLoaded(!!data[props.id]);
+    setFilePath(data[props.id]);
+  }, [data, props.id]);
+
   const {getRootProps, getInputProps} = useDropzone({
     multiple: !props.single,
     accept: accept[allowable],

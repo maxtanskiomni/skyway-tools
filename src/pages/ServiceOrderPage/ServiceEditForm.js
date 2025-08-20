@@ -17,11 +17,19 @@ const ServiceEditForm = ({ service, onUpdate }) => {
     label: status.toProperCase()
   }));
 
-  const mechanicOptions = constants.mechanics.map(mechanic => ({
+  let mechanicOptions = constants.mechanics.map(mechanic => ({
+    id: mechanic.id,
     value: mechanic.name,
     label: mechanic.name,
     rate: mechanic.rate
-  }));
+  }))
+  
+  mechanicOptions.unshift({
+    id: 'none',
+    value: 'None',
+    label: 'None',
+    rate: 0
+  });
 
   // Memoize the selected mechanic to prevent unnecessary recalculations
   const selectedMechanic = useMemo(() => 
@@ -75,7 +83,7 @@ const ServiceEditForm = ({ service, onUpdate }) => {
       const newMechanic = mechanicOptions.find(m => m.value === value);
       if (newMechanic) {
         updates.cost = newMechanic.rate * (service.time || 0);
-        updates.mechanicID = constants.mechanics.find(m => m.name === newMechanic.value).id;
+        updates.mechanicID = newMechanic.id;
       }
     } else if (field === 'status') {
       // Always update status_time when status changes
@@ -130,6 +138,7 @@ const ServiceEditForm = ({ service, onUpdate }) => {
                   label="Service Name"
                   defaultValue={service.name || ''}
                   onChange={handleTextChange('name')}
+                  disabled={!StateManager.isBackoffice()}
                   InputProps={{ 
                     style: { fontSize: 18, fontWeight: 'bold' },
                     sx: { '&:hover': { backgroundColor: 'action.hover' } }
@@ -143,6 +152,7 @@ const ServiceEditForm = ({ service, onUpdate }) => {
                     label="Status"
                     value={service.status || 'pending'}
                     onChange={handleSelectChange('status')}
+                    disabled={!StateManager.isManager()}
                     sx={{ 
                       '& .MuiSelect-select': { py: 1.5 },
                       '&:hover': { backgroundColor: 'action.hover' }
@@ -163,6 +173,7 @@ const ServiceEditForm = ({ service, onUpdate }) => {
                     label="Mechanic"
                     value={service.mechanic || ''}
                     onChange={handleSelectChange('mechanic')}
+                    disabled={!StateManager.isBackoffice()}
                     sx={{ 
                       '& .MuiSelect-select': { py: 1.5 },
                       '&:hover': { backgroundColor: 'action.hover' }
@@ -208,6 +219,7 @@ const ServiceEditForm = ({ service, onUpdate }) => {
                   label="Hours"
                   defaultValue={service.time || 0}
                   onChange={handleNumberChange('time')}
+                  disabled={!StateManager.isBackoffice()}
                   InputProps={{
                     sx: { '&:hover': { backgroundColor: 'action.hover' } }
                   }}
