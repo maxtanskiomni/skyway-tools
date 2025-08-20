@@ -521,12 +521,13 @@ const ShippingDashboardPage = () => {
       >
         <Box sx={{ 
           display: 'flex', 
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
           gap: 2
         }}>
           <TextField
             sx={{
-              flex: 1,
+              flex: { xs: 'none', sm: 1 },
               '& .MuiOutlinedInput-root': {
                 backgroundColor: alpha(theme.palette.background.paper, 0.6),
                 '&:hover': {
@@ -546,7 +547,7 @@ const ShippingDashboardPage = () => {
               ),
             }}
           />
-          <FormControl size="small" sx={{ minWidth: 200 }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
             <InputLabel>Driver</InputLabel>
             <Select
               value={driverFilter}
@@ -569,22 +570,29 @@ const ShippingDashboardPage = () => {
               ))}
             </Select>
           </FormControl>
-          <Tooltip title="Filter by date">
-            <IconButton
-              onClick={() => setIsFilterDialogOpen(true)}
-              sx={{
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                color: theme.palette.primary.main,
-                '&:hover': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                },
-                width: 48,
-                height: 48,
-              }}
-            >
-              <CalendarMonthIcon />
-            </IconButton>
-          </Tooltip>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'row', sm: 'row' },
+            gap: 1,
+            justifyContent: { xs: 'flex-end', sm: 'flex-start' }
+          }}>
+            <Tooltip title="Filter by date">
+              <IconButton
+                onClick={() => setIsFilterDialogOpen(true)}
+                sx={{
+                  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                  },
+                  width: 48,
+                  height: 48,
+                }}
+              >
+                <CalendarMonthIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
       </Paper>
 

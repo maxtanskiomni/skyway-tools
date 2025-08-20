@@ -47,7 +47,7 @@ import { StateManager } from '../../utilities/stateManager';
 import constants from '../../utilities/constants';
 import AddServiceOrderDialog from '../../components/AddServiceOrderDialog';
 
-const ServicesBlade = ({ order, onClose, onUpdate }) => {
+const ServicesBlade = ({ order, onClose, onUpdate, onServiceEdit }) => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState(order.services || []);
@@ -278,10 +278,23 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
           </TableHead>
           <TableBody>
             {services.map((service) => (
-              <TableRow key={service.id}>
+              <TableRow 
+                key={service.id}
+                hover
+                onClick={() => onServiceEdit && StateManager.isBackoffice() && onServiceEdit(service)}
+                sx={{ 
+                  cursor: (onServiceEdit && StateManager.isBackoffice()) ? 'pointer' : 'default',
+                  '&:hover': onServiceEdit && StateManager.isBackoffice() ? {
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                  } : {}
+                }}
+              >
                 <TableCell>
                   <IconButton
-                    onClick={() => handleStatusChange(service.id, service.status === 'complete' ? 'pending' : 'complete')}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent row click when clicking the status button
+                      handleStatusChange(service.id, service.status === 'complete' ? 'pending' : 'complete');
+                    }}
                     disabled={!isAdmin && service.status === 'complete'}
                     sx={{
                       color: service.status === 'complete' ? theme.palette.success.main : theme.palette.grey[500],
@@ -311,7 +324,10 @@ const ServicesBlade = ({ order, onClose, onUpdate }) => {
                   <Box display="flex" gap={1} justifyContent="flex-end">
                     <Tooltip title="Split Service Time">
                       <IconButton
-                        onClick={() => handleOpenSplitDialog(service.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent row click when clicking the split button
+                          handleOpenSplitDialog(service.id);
+                        }}
                         size="small"
                         sx={{ color: theme.palette.primary.main }}
                       >

@@ -57,6 +57,7 @@ import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import constants from '../../utilities/constants';
 import ServicesBlade from '../MechanicOrdersPage/ServicesBlade';
 import PartsBlade from '../MechanicOrdersPage/PartsBlade';
+import ServiceEditForm from '../ServiceOrderPage/ServiceEditForm';
 
 const ServiceDashboardPage = () => {
   // Component setup
@@ -120,6 +121,9 @@ const ServiceDashboardPage = () => {
   const [selectedOrderForParts, setSelectedOrderForParts] = useState(null);
   const [excludeCustomerFilter, setExcludeCustomerFilter] = useState(false);
   const [hideNeedsPartsFilter, setHideNeedsPartsFilter] = useState(false);
+  const [serviceEditDialogOpen, setServiceEditDialogOpen] = useState(false);
+  const [selectedServiceForEdit, setSelectedServiceForEdit] = useState(null);
+  const [updatingService, setUpdatingService] = useState(false);
 
   // Real-time listener for the order open in ServicesBlade
   useEffect(() => {
@@ -640,6 +644,57 @@ const ServiceDashboardPage = () => {
     if (selectedOrderForParts) {
       setSelectedOrderForParts(prev => ({ ...prev, parts: updatedParts }));
     }
+  };
+
+  const handleServiceEditDialogClose = () => {
+    setServiceEditDialogOpen(false);
+    setSelectedServiceForEdit(null);
+  };
+
+  const handleServiceUpdate = (updatedService) => {
+    // Update the service in the local state
+    if (selectedServiceForEdit) {
+      setUpdatingService(true);
+      
+      setAllOrders(prevOrders => 
+        prevOrders.map(order => {
+          if (order.services) {
+            const updatedServices = order.services.map(service => 
+              service.id === selectedServiceForEdit.id 
+                ? { ...service, ...updatedService }
+                : service
+            );
+            return { ...order, services: updatedServices };
+          }
+          return order;
+        })
+      );
+
+      // Also update the selectedServiceForEdit to reflect changes immediately
+      setSelectedServiceForEdit(prev => ({ ...prev, ...updatedService }));
+
+      // Save the updated service to the database
+      firebase.firestore()
+        .collection('services')
+        .doc(selectedServiceForEdit.id)
+        .update(updatedService)
+        .then(() => {
+          setUpdatingService(false);
+          // Optionally close the dialog after successful update
+          // Uncomment the next line if you want auto-close behavior
+          // handleServiceEditDialogClose();
+        })
+        .catch(error => {
+          console.error('Error updating service:', error);
+          setUpdatingService(false);
+          // You might want to show an error toast here
+        });
+    }
+  };
+
+  const handleServiceEditClick = (service) => {
+    setSelectedServiceForEdit(service);
+    setServiceEditDialogOpen(true);
   };
 
   const handleServiceClick = (event, serviceId) => {
@@ -1674,6 +1729,7 @@ const ServiceDashboardPage = () => {
                 order={selectedOrderForServices}
                 onClose={handleServicesBladeClose}
                 onUpdate={handleServicesUpdate}
+                onServiceEdit={handleServiceEditClick}
               />
             )}
           </DialogContent>
@@ -1722,6 +1778,56 @@ const ServiceDashboardPage = () => {
               />
             )}
           </DialogContent>
+        </Dialog>
+
+        {/* Service Edit Dialog */}
+        <Dialog
+          open={serviceEditDialogOpen}
+          onClose={handleServiceEditDialogClose}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: {
+              maxHeight: '90vh'
+            }
+          }}
+        >
+          <DialogTitle>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="h6">
+                  Edit Service - {selectedServiceForEdit?.name || 'Service'}
+                  {updatingService && (
+                    <CircularProgress
+                      size={16}
+                      sx={{ ml: 1, color: 'inherit' }}
+                    />
+                  )}
+                </Typography>
+                {selectedServiceForEdit && (
+                  <Typography variant="body2" color="text.secondary">
+                    Order: {selectedServiceForEdit.order || 'N/A'}
+                  </Typography>
+                )}
+              </Box>
+              <IconButton onClick={handleServiceEditDialogClose}>
+                <CheckIcon />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+          <DialogContent>
+            {selectedServiceForEdit && (
+              <ServiceEditForm
+                service={selectedServiceForEdit}
+                onUpdate={handleServiceUpdate}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleServiceEditDialogClose} color="primary">
+              Close
+            </Button>
+          </DialogActions>
         </Dialog>
       </Container>
     </>
